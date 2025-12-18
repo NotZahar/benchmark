@@ -47,11 +47,11 @@ VERBOSE=1 colcon build --event-handlers console_direct+ --packages-select ros2_c
 export RMW_IMPLEMENTATION="rmw_cyclonedds_cpp"
 if [[ "$USE_CUSTOM_DDS_CONFIG" = true ]]; then
 	export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General></Domain></CycloneDDS>'
-	echo "DDS: $RMW_IMPLEMENTATION"
+	echo "DDS: $RMW_IMPLEMENTATION (with custom dds config)"
 	echo "DDS config: $CYCLONEDDS_URI"
 else
 	unset CYCLONEDDS_URI
-	echo "DDS: $RMW_IMPLEMENTATION"
+	echo "DDS: $RMW_IMPLEMENTATION (with default dds config)"
 fi
 
 source ./install/setup.bash
