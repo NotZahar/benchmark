@@ -91,7 +91,7 @@ makeBenchmarkResult(Config config,
   if (latencies.size() != config.number_of_samples)
     return "Invalid input data\n";
 
-  std::string result = "Benchmark results:\n";
+  std::string result = "";
   std::sort(latencies.begin(), latencies.end());
 
   const auto number_of_samples = latencies.size();
@@ -103,7 +103,7 @@ makeBenchmarkResult(Config config,
   result +=
       "Payload size: " + std::to_string(config.payload_size_bytes) + " bytes\n";
   result +=
-      "Publish period: " + std::to_string(config.publish_period_ms) + " ms\n";
+      "Publish period: " + std::to_string(config.publish_period_ms) + " ms\n\n";
   result += "Average latency: " + std::to_string(average) + " ns\n";
   result += "Median latency: " + std::to_string(median) + " ns\n";
   result += "P99 latency: " + std::to_string(p99) + " ns\n";

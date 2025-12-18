@@ -39,14 +39,29 @@ source ./install/setup.bash
 echo "Benchmark started..."
 echo ""
 
-ros2 run ros2_cyclone ros2_cyclone_subscriber "/root/workspace/ros2_cyclone/config/1024_bytes_10_ms_500_samples.yaml" &
-ROS2_CYCLONE_SUBSCRIBER_PID=$!
-ROS2_PIDS+=($ROS2_CYCLONE_SUBSCRIBER_PID)
+mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/ros2_cyclone/config/*.yaml | sort -V)
 
-sleep 0.5
+for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
+	echo "Benchmark config: $BENCHMARK_CONFIG"
+	echo "========================================="
 
-ros2 run ros2_cyclone ros2_cyclone_publisher "/root/workspace/ros2_cyclone/config/1024_bytes_10_ms_500_samples.yaml" &
-ROS2_CYCLONE_PUBLISHER_PID=$!
-ROS2_PIDS+=($ROS2_CYCLONE_PUBLISHER_PID)
+	ros2 run ros2_cyclone ros2_cyclone_subscriber "$BENCHMARK_CONFIG" &
+	ROS2_CYCLONE_SUBSCRIBER_PID=$!
+	ROS2_PIDS+=($ROS2_CYCLONE_SUBSCRIBER_PID)
 
-wait "$ROS2_CYCLONE_SUBSCRIBER_PID"
+	sleep 0.5
+
+	ros2 run ros2_cyclone ros2_cyclone_publisher "$BENCHMARK_CONFIG" &
+	ROS2_CYCLONE_PUBLISHER_PID=$!
+	ROS2_PIDS+=($ROS2_CYCLONE_PUBLISHER_PID)
+
+	wait "$ROS2_CYCLONE_SUBSCRIBER_PID"
+	echo "========================================="
+
+	cleanup
+
+	sleep 1
+	echo ""
+done
+
+echo "All benchmarks completed!"
