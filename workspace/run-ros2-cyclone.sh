@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -e
+
+ROS2_PIDS=()
+
+cleanup() {
+	for ROS2_PID in "${ROS2_PIDS[@]}"; do
+		if kill -0 "$ROS2_PID" 2>/dev/null; then
+			kill -TERM "$ROS2_PID" 2>/dev/null || true
+		fi
+	done
+
+	sleep 1
+
+	for ROS2_PID in "${ROS2_PIDS[@]}"; do
+		if kill -0 "$ROS2_PID" 2>/dev/null; then
+			kill -KILL "$ROS2_PID" 2>/dev/null || true
+		fi
+	done
+
+	pkill -KILL -f 'ros2_cyclone' 2>/dev/null || true
+}
+
+trap cleanup EXIT INT TERM
+
+cd /root/workspace/ros2_cyclone
+source /opt/ros/jazzy/setup.bash
+
+rm -rf build install log
+VERBOSE=1 colcon build --event-handlers console_direct+ --packages-select ros2_cyclone --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Release
+
+export RMW_IMPLEMENTATION="rmw_cyclonedds_cpp"
+export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General></Domain></CycloneDDS>'
+echo "DDS: $RMW_IMPLEMENTATION"
+echo "DDS config: $CYCLONEDDS_URI"
+
+source ./install/setup.bash
+echo "Benchmark started..."
+echo ""
+
+ros2 run ros2_cyclone ros2_cyclone_subscriber "/root/workspace/ros2_cyclone/config/1024_bytes_10_ms_500_samples.yaml" &
+ROS2_CYCLONE_SUBSCRIBER_PID=$!
+ROS2_PIDS+=($ROS2_CYCLONE_SUBSCRIBER_PID)
+
+sleep 0.5
+
+ros2 run ros2_cyclone ros2_cyclone_publisher "/root/workspace/ros2_cyclone/config/1024_bytes_10_ms_500_samples.yaml" &
+ROS2_CYCLONE_PUBLISHER_PID=$!
+ROS2_PIDS+=($ROS2_CYCLONE_PUBLISHER_PID)
+
+wait "$ROS2_CYCLONE_SUBSCRIBER_PID"
