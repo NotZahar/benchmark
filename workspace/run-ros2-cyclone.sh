@@ -2,8 +2,6 @@
 
 set -e
 
-ROS2_PIDS=()
-
 cleanup() {
 	for ROS2_PID in "${ROS2_PIDS[@]}"; do
 		if kill -0 "$ROS2_PID" 2>/dev/null; then
@@ -22,6 +20,22 @@ cleanup() {
 	pkill -KILL -f 'ros2_cyclone' 2>/dev/null || true
 }
 
+ROS2_PIDS=()
+USE_CUSTOM_DDS_CONFIG=false
+
+while [[ $# -gt 0 ]]; do
+	case $1 in
+	--with-dds-config)
+		USE_CUSTOM_DDS_CONFIG=true
+		shift
+		;;
+	*)
+		echo "Unknown option: $1"
+		exit 1
+		;;
+	esac
+done
+
 trap cleanup EXIT INT TERM
 
 cd /root/workspace/ros2_cyclone
@@ -31,9 +45,14 @@ rm -rf build install log
 VERBOSE=1 colcon build --event-handlers console_direct+ --packages-select ros2_cyclone --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Release
 
 export RMW_IMPLEMENTATION="rmw_cyclonedds_cpp"
-export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General></Domain></CycloneDDS>'
-echo "DDS: $RMW_IMPLEMENTATION"
-echo "DDS config: $CYCLONEDDS_URI"
+if [[ "$USE_CUSTOM_DDS_CONFIG" = true ]]; then
+	export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General></Domain></CycloneDDS>'
+	echo "DDS: $RMW_IMPLEMENTATION"
+	echo "DDS config: $CYCLONEDDS_URI"
+else
+	unset CYCLONEDDS_URI
+	echo "DDS: $RMW_IMPLEMENTATION"
+fi
 
 source ./install/setup.bash
 echo "Benchmark started..."
