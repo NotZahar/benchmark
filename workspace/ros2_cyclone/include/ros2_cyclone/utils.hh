@@ -55,6 +55,8 @@ struct Config {
   std::size_t number_of_samples;
 };
 
+using TimePointType = decltype(std::chrono::steady_clock::now());
+
 [[nodiscard]] inline Config
 parseConfig(const std::string path_to_config) noexcept {
   Config config;
@@ -109,6 +111,15 @@ makeBenchmarkResult(Config config,
   result += "P99 latency: " + std::to_string(p99) + " ns\n";
 
   return result;
+}
+
+[[nodiscard]] inline TimePointType now() noexcept {
+  return std::chrono::steady_clock::now();
+}
+
+[[nodiscard]] inline long elapsed(const TimePointType &t1,
+                                  const TimePointType &t2) noexcept {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
 }
 
 } // namespace tb::utils
