@@ -15,6 +15,14 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_PERF_TOOL=OFF -DZMQ_BUILD_TESTS=OFF
 make -j$(nproc) install
 
+echo "Building cppzmq"
+cd $BUILD_DIR
+git clone https://github.com/zeromq/cppzmq.git
+cd cppzmq
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCPPZMQ_BUILD_TESTS=OFF
+make -j$(nproc) install
+
 echo "Building Flatbuffers"
 cd $BUILD_DIR
 git clone https://github.com/google/flatbuffers.git

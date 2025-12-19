@@ -19,6 +19,7 @@ APT_PACKAGES=(
 	"gdb"
 	"libclang-dev"
 	"wget"
+	"python3-venv"
 )
 
 apt update
@@ -27,9 +28,19 @@ for APT_PACKAGE in "${APT_PACKAGES[@]}"; do
 	apt install -y "$APT_PACKAGE"
 done
 
+# Python
 add-apt-repository -y ppa:deadsnakes/ppa
 apt update
 apt install -y libpython3.13
+
+# Cmake-format
+python3 -m venv /tmp
+. /tmp/bin/activate
+pip install cmake-format
+
+# Shfmt
+curl -sS https://webinstall.dev/shfmt | bash
+source ~/.config/envman/PATH.env
 
 # LLVM
 cd /tmp

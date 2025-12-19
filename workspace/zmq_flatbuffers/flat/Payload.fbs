@@ -1,0 +1,9 @@
+namespace tb_flat;
+
+table Payload {
+  time_stamp_ns: int64;
+  data: [ubyte];
+  message_number: uint32;
+}
+
+root_type Payload;

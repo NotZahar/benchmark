@@ -25,11 +25,13 @@ add_executable(${ROS2_NODE_SUBSCRIBER})
 target_sources(${ROS2_NODE_SUBSCRIBER} PRIVATE src/subscriber.cc)
 
 target_include_directories(
-  ${ROS2_NODE_PUBLISHER} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                          $<INSTALL_INTERFACE:include>)
-                          target_include_directories(
-  ${ROS2_NODE_SUBSCRIBER} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                          $<INSTALL_INTERFACE:include>)
+  ${ROS2_NODE_PUBLISHER}
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include>)
+target_include_directories(
+  ${ROS2_NODE_SUBSCRIBER}
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(${ROS2_NODE_PUBLISHER} rclcpp std_msgs)
 ament_target_dependencies(${ROS2_NODE_SUBSCRIBER} rclcpp std_msgs)
