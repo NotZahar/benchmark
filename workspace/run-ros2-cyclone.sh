@@ -73,7 +73,7 @@ mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/ros2_cyclone/conf
 for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 	BENCHMARK_CONFIG_NAME=$(basename "$BENCHMARK_CONFIG" .yaml)
 	mkdir -p "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}"
-	echo "Benchmark started with config: $BENCHMARK_CONFIG_NAME"
+	echo "with config: $BENCHMARK_CONFIG_NAME"
 
 	SUBSCRIBER_PIDS=()
 	PERF_STAT_SUBSCRIBER_PIDS=()
