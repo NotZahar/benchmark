@@ -57,15 +57,16 @@ colcon build --packages-select ros2_cyclone --cmake-args -DCMAKE_EXPORT_COMPILE_
 
 export RMW_IMPLEMENTATION="rmw_cyclonedds_cpp"
 if [[ "$USE_CUSTOM_DDS_CONFIG" = true ]]; then
-	export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General></Domain></CycloneDDS>'
-	echo "DDS: $RMW_IMPLEMENTATION (with custom dds config)"
+	export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General><Internal><Watermarks><WhcHigh>100MB</WhcHigh></Watermarks></Internal></Domain></CycloneDDS>'
+	echo "DDS: $RMW_IMPLEMENTATION (with custom config)"
 	echo "DDS config: $CYCLONEDDS_URI"
 else
 	unset CYCLONEDDS_URI
-	echo "DDS: $RMW_IMPLEMENTATION (with default dds config)"
+	echo "DDS: $RMW_IMPLEMENTATION (with default config)"
 fi
 
 source ./install/setup.bash
+echo ""
 echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers) ..."
 
 mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/ros2_cyclone/config/*.yaml | sort -V)
@@ -120,4 +121,3 @@ for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 done
 
 echo "All benchmarks completed!"
-echo "Perf data stored in $PERF_OUTPUT_DIR"

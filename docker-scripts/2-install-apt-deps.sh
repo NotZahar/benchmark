@@ -52,6 +52,7 @@ apt update
 apt install -y \
 	ros-jazzy-ros-base \
 	ros-jazzy-rmw-cyclonedds-cpp \
+	ros-jazzy-rmw-fastrtps-cpp \
 	python3-colcon-common-extensions
 
 # Cleanup
