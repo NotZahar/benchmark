@@ -22,6 +22,8 @@ cleanup_ros2() {
 
 ROS2_PIDS=()
 USE_CUSTOM_DDS_CONFIG=false
+NUMBER_OF_SUBSCRIBERS=1
+LATENCIES_OUTPUT_DIR="/root/workspace/tmp/ros2_cyclone/latencies"
 PERF_OUTPUT_DIR="/root/workspace/tmp/ros2_cyclone/perf_data"
 
 while [[ $# -gt 0 ]]; do
@@ -29,6 +31,10 @@ while [[ $# -gt 0 ]]; do
 	--with-dds-config)
 		USE_CUSTOM_DDS_CONFIG=true
 		shift
+		;;
+	--num-subscribers)
+		NUMBER_OF_SUBSCRIBERS="$2"
+		shift 2
 		;;
 	*)
 		echo "Unknown option: $1"
@@ -39,14 +45,15 @@ done
 
 trap cleanup_ros2 EXIT INT TERM
 
-rm -rf $PERF_OUTPUT_DIR
+rm -rf $LATENCIES_OUTPUT_DIR $PERF_OUTPUT_DIR
+mkdir -p "$LATENCIES_OUTPUT_DIR"
 mkdir -p "$PERF_OUTPUT_DIR"
 
 cd /root/workspace/ros2_cyclone
 source /opt/ros/jazzy/setup.bash
 
 rm -rf build install log
-VERBOSE=1 colcon build --event-handlers console_direct+ --packages-select ros2_cyclone --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Release
+colcon build --packages-select ros2_cyclone --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Release
 
 export RMW_IMPLEMENTATION="rmw_cyclonedds_cpp"
 if [[ "$USE_CUSTOM_DDS_CONFIG" = true ]]; then
@@ -59,19 +66,28 @@ else
 fi
 
 source ./install/setup.bash
-echo "Benchmark started..."
-echo ""
+echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers) ..."
 
 mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/ros2_cyclone/config/*.yaml | sort -V)
 
 for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 	BENCHMARK_CONFIG_NAME=$(basename "$BENCHMARK_CONFIG" .yaml)
-	echo "Benchmark config: $BENCHMARK_CONFIG_NAME"
-	echo "========================================="
+	mkdir -p "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}"
+	echo "Benchmark started with config: $BENCHMARK_CONFIG_NAME"
 
-	ros2 run ros2_cyclone ros2_cyclone_subscriber "$BENCHMARK_CONFIG" &
-	ROS2_CYCLONE_SUBSCRIBER_PID=$!
-	ROS2_PIDS+=($ROS2_CYCLONE_SUBSCRIBER_PID)
+	SUBSCRIBER_PIDS=()
+	PERF_STAT_SUBSCRIBER_PIDS=()
+
+	for I in $(seq 1 "$NUMBER_OF_SUBSCRIBERS"); do
+		ros2 run ros2_cyclone ros2_cyclone_subscriber "$BENCHMARK_CONFIG" "$I" &
+		ROS2_CYCLONE_SUBSCRIBER_PID=$!
+		SUBSCRIBER_PIDS+=($ROS2_CYCLONE_SUBSCRIBER_PID)
+		ROS2_PIDS+=($ROS2_CYCLONE_SUBSCRIBER_PID)
+
+		perf stat -p "$ROS2_CYCLONE_SUBSCRIBER_PID" -o "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}/${I}_subscriber.stat.txt" &
+		PERF_STAT_SUBSCRIBER_PID=$!
+		PERF_STAT_SUBSCRIBER_PIDS+=($PERF_STAT_SUBSCRIBER_PID)
+	done
 
 	sleep 0.5
 
@@ -79,23 +95,28 @@ for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 	ROS2_CYCLONE_PUBLISHER_PID=$!
 	ROS2_PIDS+=($ROS2_CYCLONE_PUBLISHER_PID)
 
-	perf stat -p "$ROS2_CYCLONE_SUBSCRIBER_PID" -o "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}_subscriber.stat.txt" &
-	PERF_STAT_SUB_PID=$!
+	perf stat -p "$ROS2_CYCLONE_PUBLISHER_PID" -o "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}/publisher.stat.txt" &
+	PERF_STAT_PUBLISHER_PID=$!
 
-	perf stat -p "$ROS2_CYCLONE_PUBLISHER_PID" -o "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}_publisher.stat.txt" &
-	PERF_STAT_PUB_PID=$!
+	for SUBSCRIBER_PID in "${SUBSCRIBER_PIDS[@]}"; do
+		wait "$SUBSCRIBER_PID" 2>/dev/null || true
+	done
 
-	wait "$ROS2_CYCLONE_SUBSCRIBER_PID"
-	kill -INT "$PERF_STAT_SUB_PID" "$PERF_STAT_PUB_PID" 2>/dev/null || true
-	wait "$PERF_STAT_SUB_PID" "$PERF_STAT_PUB_PID" 2>/dev/null || true
+	for PERF_STAT_SUBSCRIBER_PID in "${PERF_STAT_SUBSCRIBER_PIDS[@]}"; do
+		kill -INT "$PERF_STAT_SUBSCRIBER_PID" 2>/dev/null || true
+	done
 
-	echo "========================================="
+	kill -INT "$PERF_STAT_PUBLISHER_PID" 2>/dev/null || true
+
+	for PERF_STAT_SUBSCRIBER_PID in "${PERF_STAT_SUBSCRIBER_PIDS[@]}"; do
+		wait "$PERF_STAT_SUBSCRIBER_PID" 2>/dev/null || true
+	done
+	wait "$PERF_STAT_PUBLISHER_PID" 2>/dev/null || true
 
 	cleanup_ros2
 	ROS2_PIDS=()
 
 	sleep 1
-	echo ""
 done
 
 echo "All benchmarks completed!"

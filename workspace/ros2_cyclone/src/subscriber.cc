@@ -1,5 +1,7 @@
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/byte_multi_array.hpp>
@@ -13,8 +15,10 @@ namespace tb {
 class Subscriber final : public rclcpp::Node {
 public:
   Subscriber() = delete;
-  explicit Subscriber(utils::Config config) noexcept
-      : Node{constants::SUBSCRIBER_NODE_NAME}, config_{config} {
+  Subscriber(utils::Config config, int instance_id) noexcept
+      : Node{std::string{constants::SUBSCRIBER_NODE_NAME} + "_" +
+             std::to_string(instance_id)},
+        config_{config}, instance_id_{instance_id} {
     latencies_.reserve(config_.number_of_samples);
     subscriber_ = create_subscription<ros2_cyclone::msg::Payload>(
         constants::BENCHMARK_TOPIC, constants::BENCHMARK_QOS,
@@ -24,7 +28,19 @@ public:
   }
 
   ~Subscriber() {
-    std::cerr << utils::makeBenchmarkResult(config_, std::move(latencies_));
+    const auto result_folder =
+        std::string{constants::RESULTS_FILE_PATH} + "/" +
+        std::to_string(config_.payload_size_bytes) + "_bytes_" +
+        std::to_string(config_.publish_period_ms) + "_ms_" +
+        std::to_string(config_.number_of_samples) + "_samples";
+    std::filesystem::create_directories(result_folder);
+
+    const auto result_file =
+        result_folder + "/" + std::to_string(instance_id_) + "_subscriber.txt";
+
+    std::ofstream out{result_file};
+    out << makeBenchmarkResult(config_, std::move(latencies_));
+    out.close();
   }
 
 private:
@@ -41,6 +57,7 @@ private:
   }
 
   const utils::Config config_;
+  int instance_id_;
   std::vector<std::int64_t> latencies_;
   rclcpp::Subscription<ros2_cyclone::msg::Payload>::SharedPtr subscriber_;
 };
@@ -48,7 +65,7 @@ private:
 } // namespace tb
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
+  if (argc != 3) { // NOTE: First is config, second is instance id
     std::cerr << __FUNCTION__ << ": " << __LINE__ << std::endl;
     std::abort();
 
@@ -56,8 +73,8 @@ int main(int argc, char **argv) {
   }
 
   rclcpp::init(argc, argv);
-  rclcpp::spin(
-      std::make_shared<tb::Subscriber>(tb::utils::parseConfig(argv[1])));
+  rclcpp::spin(std::make_shared<tb::Subscriber>(tb::utils::parseConfig(argv[1]),
+                                                std::stoi(argv[2])));
   rclcpp::shutdown();
 
   return tb::constants::SUCCESS_APP_FINISH;
