@@ -14,8 +14,6 @@ services:
       - IPC_LOCK # NOTE: Memory locking - no swap
     ulimits:
       memlock: -1 # NOTE: Unlimited memory locking
-    environment:
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
     volumes:
       - ./workspace:/root/workspace
       - /usr/lib/linux-tools/${KERNEL_VERSION}/perf:/usr/bin/perf:ro
