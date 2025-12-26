@@ -27,10 +27,13 @@ public:
   }
 
   void run() noexcept {
+    auto next_wake = std::chrono::steady_clock::now();
+    const auto period = std::chrono::milliseconds(config_.publish_period_ms);
+
     while (message_number_ < config_.number_of_samples) {
+      next_wake += period;
       tick();
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(config_.publish_period_ms));
+      std::this_thread::sleep_until(next_wake);
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
