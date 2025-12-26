@@ -24,8 +24,6 @@ ZMQ_PIDS=()
 NUMBER_OF_SUBSCRIBERS=1
 WITH_TCP=false
 WITH_IPC=false
-LATENCIES_OUTPUT_DIR="/root/workspace/tmp/zmq_flatbuffers/latencies"
-PERF_OUTPUT_DIR="/root/workspace/tmp/zmq_flatbuffers/perf_data"
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -53,7 +51,17 @@ if [[ "$WITH_TCP" == false && "$WITH_IPC" == false ]]; then
 	exit 1
 fi
 
+TRANSPORT_TYPE=""
+if [[ "$WITH_TCP" == true ]]; then
+	TRANSPORT_TYPE="tcp"
+else
+	TRANSPORT_TYPE="ipc"
+fi
+
 trap cleanup_zmq EXIT INT TERM
+
+LATENCIES_OUTPUT_DIR="/root/workspace/tmp/zmq_flatbuffers_$TRANSPORT_TYPE/latencies"
+PERF_OUTPUT_DIR="/root/workspace/tmp/zmq_flatbuffers_$TRANSPORT_TYPE/perf_data"
 
 rm -rf $LATENCIES_OUTPUT_DIR $PERF_OUTPUT_DIR
 mkdir -p "$LATENCIES_OUTPUT_DIR"
@@ -70,14 +78,6 @@ cd ..
 
 echo ""
 echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers) ..."
-
-TRANSPORT_TYPE=""
-if [[ "$WITH_TCP" == true ]]; then
-	TRANSPORT_TYPE="tcp"
-fi
-if [[ "$WITH_IPC" == true ]]; then
-	TRANSPORT_TYPE="ipc"
-fi
 
 mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/configs/20hz_10000_samples/config/*.yaml | sort -V)
 

@@ -16,19 +16,20 @@ class Subscriber {
 public:
   Subscriber() = delete;
   Subscriber(utils::Config config, int instance_id, std::string transport_type)
-      : config_{config}, instance_id_{instance_id}, context_{1},
+      : config_{config}, transport_type_{std::move(transport_type)},
+        instance_id_{instance_id}, context_{1},
         socket_{context_, zmq::socket_type::sub} {
     latencies_.reserve(config_.number_of_samples);
 
-    socket_.connect(transport_type == "tcp" ? constants::ZMQ_TCP_ENDPOINT
-                                            : constants::ZMQ_IPC_ENDPOINT);
+    socket_.connect(transport_type_ == "tcp" ? constants::ZMQ_TCP_ENDPOINT
+                                             : constants::ZMQ_IPC_ENDPOINT);
     socket_.set(zmq::sockopt::subscribe, "");
   }
 
   ~Subscriber() {
     const auto result_folder =
-        std::string{constants::RESULTS_FILE_PATH} + "/" +
-        std::to_string(config_.payload_size_bytes) + "_bytes_" +
+        std::string{constants::RESULTS_FILE_PATH} + "_" + transport_type_ +
+        "/latencies/" + std::to_string(config_.payload_size_bytes) + "_bytes_" +
         std::to_string(config_.publish_period_ms) + "_ms_" +
         std::to_string(config_.number_of_samples) + "_samples";
     std::filesystem::create_directories(result_folder);
@@ -65,6 +66,7 @@ private:
   }
 
   const utils::Config config_;
+  std::string transport_type_;
   int instance_id_;
   std::vector<std::int64_t> latencies_;
   zmq::context_t context_;
