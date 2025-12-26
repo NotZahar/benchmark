@@ -111,11 +111,14 @@ makeBenchmarkResult(Config config,
   return result;
 }
 
-[[nodiscard]] inline long now() noexcept {
-  return std::chrono::high_resolution_clock::now().time_since_epoch().count();
+[[nodiscard]] inline std::int64_t now() noexcept {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
 }
 
-[[nodiscard]] inline long elapsed(const long t1, const long t2) noexcept {
+[[nodiscard]] inline std::int64_t elapsed(const std::int64_t t1,
+                                          const std::int64_t t2) noexcept {
   return t2 - t1;
 }
 

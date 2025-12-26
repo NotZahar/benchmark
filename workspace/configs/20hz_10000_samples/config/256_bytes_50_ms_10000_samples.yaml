@@ -1,0 +1,3 @@
+payload_size_bytes: 256
+publish_period_ms: 50
+number_of_samples: 10000

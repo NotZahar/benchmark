@@ -8,15 +8,21 @@
 #include "zmq_flatbuffers/constants.hh"
 #include "zmq_flatbuffers/utils.hh"
 
+inline constexpr auto METADATA_OVERHEAD = 256;
+
 namespace tb {
 
 class Publisher {
 public:
   Publisher() = delete;
-  explicit Publisher(utils::Config config) noexcept
-      : config_{config}, message_number_{0}, context_{1},
+  Publisher(utils::Config config, std::string transport_type) noexcept
+      : config_{config},
+        builder_{config_.payload_size_bytes + METADATA_OVERHEAD},
+        message_number_{0}, context_{1},
         socket_{context_, zmq::socket_type::pub} {
-    socket_.bind(constants::ZMQ_TCP_ENDPOINT);
+    std::filesystem::remove("/tmp/zmq_benchmark.ipc");
+    socket_.bind(transport_type == "tcp" ? constants::ZMQ_TCP_ENDPOINT
+                                         : constants::ZMQ_IPC_ENDPOINT);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
@@ -32,23 +38,21 @@ public:
 
 private:
   void tick() noexcept {
-    constexpr auto metadata_overhead = 128;
-    flatbuffers::FlatBufferBuilder builder{config_.payload_size_bytes +
-                                           metadata_overhead};
+    builder_.Clear();
 
     std::vector<uint8_t> data(config_.payload_size_bytes,
                               constants::PAYLOAD_DATA_CHUNK);
 
-    builder.Finish(tb_flat::CreatePayload(
-        builder, utils::now(), builder.CreateVector(data), message_number_++));
+    builder_.Finish(tb_flat::CreatePayload(builder_, utils::now(),
+                                           builder_.CreateVector(data),
+                                           message_number_++));
 
-    zmq::message_t message{builder.GetSize()};
-    std::memcpy(message.data(), builder.GetBufferPointer(), builder.GetSize());
-
+    zmq::message_t message(builder_.GetBufferPointer(), builder_.GetSize());
     socket_.send(message, zmq::send_flags::none);
   }
 
   const utils::Config config_;
+  flatbuffers::FlatBufferBuilder builder_;
   std::uint32_t message_number_;
   zmq::context_t context_;
   zmq::socket_t socket_;
@@ -57,10 +61,10 @@ private:
 } // namespace tb
 
 int main(int argc, char **argv) {
-  if (argc != 2)
+  if (argc != 3)
     return tb::constants::FAILED_APP_FINISH;
 
-  tb::Publisher publisher{tb::utils::parseConfig(argv[1])};
+  tb::Publisher publisher{tb::utils::parseConfig(argv[1]), argv[2]};
   publisher.run();
 
   return tb::constants::SUCCESS_APP_FINISH;

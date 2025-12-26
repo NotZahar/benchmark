@@ -69,7 +69,7 @@ source ./install/setup.bash
 echo ""
 echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers) ..."
 
-mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/ros2_cyclone/config/*.yaml | sort -V)
+mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/configs/20hz_10000_samples/config/*.yaml | sort -V)
 
 for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 	BENCHMARK_CONFIG_NAME=$(basename "$BENCHMARK_CONFIG" .yaml)

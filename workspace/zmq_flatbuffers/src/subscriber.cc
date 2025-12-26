@@ -1,10 +1,8 @@
-#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <flatbuffers/flatbuffers.h>
 #include <fstream>
 #include <iostream>
-#include <thread>
 #include <vector>
 #include <zmq.hpp>
 
@@ -17,16 +15,14 @@ namespace tb {
 class Subscriber {
 public:
   Subscriber() = delete;
-  Subscriber(utils::Config config, int instance_id)
+  Subscriber(utils::Config config, int instance_id, std::string transport_type)
       : config_{config}, instance_id_{instance_id}, context_{1},
         socket_{context_, zmq::socket_type::sub} {
     latencies_.reserve(config_.number_of_samples);
 
-    socket_.connect(constants::ZMQ_TCP_ENDPOINT);
+    socket_.connect(transport_type == "tcp" ? constants::ZMQ_TCP_ENDPOINT
+                                            : constants::ZMQ_IPC_ENDPOINT);
     socket_.set(zmq::sockopt::subscribe, "");
-
-    // Skip initial messages during connection stabilization
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   ~Subscriber() {
@@ -48,11 +44,9 @@ public:
   void run() {
     while (latencies_.size() < config_.number_of_samples) {
       zmq::message_t message;
-      auto result = socket_.recv(message, zmq::recv_flags::none);
-
-      if (result) {
+      const auto result = socket_.recv(message, zmq::recv_flags::none);
+      if (result)
         tack(message);
-      }
     }
   }
 
@@ -66,10 +60,7 @@ private:
       std::abort();
     }
 
-    auto now =
-        std::chrono::high_resolution_clock::now().time_since_epoch().count();
-
-    std::int64_t latency_ns = now - payload->time_stamp_ns();
+    const auto latency_ns = utils::now() - payload->time_stamp_ns();
     latencies_.push_back(latency_ns);
   }
 
@@ -83,11 +74,11 @@ private:
 } // namespace tb
 
 int main(int argc, char **argv) {
-  if (argc != 3)
+  if (argc != 4)
     return tb::constants::FAILED_APP_FINISH;
 
-  tb::Subscriber subscriber{tb::utils::parseConfig(argv[1]),
-                            std::stoi(argv[2])};
+  tb::Subscriber subscriber{tb::utils::parseConfig(argv[1]), std::stoi(argv[2]),
+                            argv[3]};
   subscriber.run();
 
   return tb::constants::SUCCESS_APP_FINISH;
