@@ -43,3 +43,5 @@ cd $BUILD_DIR
 git clone https://github.com/eclipse-iceoryx/iceoryx2.git
 cd iceoryx2
 cargo build --release --jobs $(nproc)
+
+ldconfig
