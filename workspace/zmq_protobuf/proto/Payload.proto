@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package tb_proto;
+
+message Payload {
+  int64 time_stamp_ns = 1;
+  bytes data = 2;
+  uint32 message_number = 3;
+}

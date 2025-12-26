@@ -9,4 +9,8 @@ sleep 10
 ./run-zmq-flatbuffers.sh --num-subscribers 2 --with-tcp
 sleep 10
 ./run-zmq-flatbuffers.sh --num-subscribers 2 --with-ipc
+sleep 10
+./run-zmq-protobuf.sh --num-subscribers 2 --with-tcp
+sleep 10
+./run-zmq-protobuf.sh --num-subscribers 2 --with-ipc
 sleep 2

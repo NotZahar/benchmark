@@ -20,7 +20,7 @@ public:
         builder_{config_.payload_size_bytes + METADATA_OVERHEAD},
         message_number_{0}, context_{1},
         socket_{context_, zmq::socket_type::pub} {
-    std::filesystem::remove("/tmp/zmq_benchmark.ipc");
+    std::filesystem::remove("/tmp/zmq_benchmark_flat.ipc");
     socket_.bind(transport_type == "tcp" ? constants::ZMQ_TCP_ENDPOINT
                                          : constants::ZMQ_IPC_ENDPOINT);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));

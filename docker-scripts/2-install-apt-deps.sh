@@ -20,6 +20,8 @@ APT_PACKAGES=(
 	"libclang-dev"
 	"wget"
 	"python3-venv"
+	"protobuf-compiler"
+	"libprotobuf-dev"
 )
 
 apt update

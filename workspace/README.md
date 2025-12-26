@@ -8,6 +8,9 @@
 - ##### ZMQ + FlatBuffers:
     - With tcp and 1 subscriber: `./run-zmq-flatbuffers.sh --num-subscribers 1 --with-tcp`
     - With ipc and 1 subscriber: `./run-zmq-flatbuffers.sh --num-subscribers 1 --with-ipc`
+- ##### ZMQ + Protobuf:
+    - With tcp and 1 subscriber: `./run-zmq-protobuf.sh --num-subscribers 1 --with-tcp`
+    - With ipc and 1 subscriber: `./run-zmq-protobuf.sh --num-subscribers 1 --with-ipc`
 
 ### Where are results
 - Latency: `./tmp/TRANSPORT_TYPE/latencies`
