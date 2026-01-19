@@ -22,33 +22,31 @@ APT_PACKAGES=(
 	"python3-venv"
 	"protobuf-compiler"
 	"libprotobuf-dev"
+	"clangd-20"
+	"clang-format-20"
+	"libncurses-dev"
+	"ninja-build"
 )
 
 apt update
-for APT_PACKAGE in "${APT_PACKAGES[@]}"; do
-	echo "Installing: $APT_PACKAGE"
-	apt install -y "$APT_PACKAGE"
-done
-
-# Python
-add-apt-repository -y ppa:deadsnakes/ppa
-apt update
-apt install -y libpython3.13
+if apt install -y "${APT_PACKAGES[@]}"; then
+	echo "All packages installed successfully!"
+else
+	echo "Error: Some packages failed to install!" >&2
+	exit 1
+fi
 
 # Cmake-format
+echo "Start to install cmake-format ..."
 python3 -m venv /tmp
 . /tmp/bin/activate
 pip install cmake-format
 
 # Shfmt
-curl -sS https://webinstall.dev/shfmt | bash
-source ~/.config/envman/PATH.env
-
-# LLVM
-cd /tmp
-wget https://apt.llvm.org/llvm.sh
-chmod +x llvm.sh
-./llvm.sh 20 all
+echo "Start to install shfmt ..."
+SHFMT_VERSION="v3.8.0"
+wget -q "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_linux_amd64" -O /usr/local/bin/shfmt
+chmod +x /usr/local/bin/shfmt
 
 # Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
@@ -66,7 +64,12 @@ apt install -y \
 	ros-jazzy-ros-base \
 	ros-jazzy-rmw-cyclonedds-cpp \
 	ros-jazzy-rmw-fastrtps-cpp \
-	python3-colcon-common-extensions
+	ros-jazzy-iceoryx-posh \
+	ros-jazzy-iceoryx-binding-c \
+	ros-jazzy-iceoryx-hoofs \
+	python3-colcon-common-extensions \
+	python3-rosdep \
+	python3-vcstool
 
-# Cleanup
-rm -rf /var/lib/apt/lists/*
+# Clean up
+apt clean && rm -rf /var/lib/apt/lists/*
