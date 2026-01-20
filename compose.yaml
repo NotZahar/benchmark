@@ -16,7 +16,7 @@ services:
       memlock: -1 # NOTE: Unlimited memory locking
     volumes:
       - ./workspace:/root/workspace
-      # - /usr/lib/linux-tools/${KERNEL_VERSION}/perf:/usr/bin/perf:ro
-      - /usr/bin/perf:/usr/bin/perf:ro
+      # - /usr/lib/linux-tools/${KERNEL_VERSION}/perf:/usr/bin/perf:ro # host is Ubuntu 24
+      - /usr/bin/perf:/usr/bin/perf:ro # host is Ubuntu 25
     tty: true
     stdin_open: true
