@@ -24,6 +24,7 @@ cleanup_ros2() {
 
 ROS2_PIDS=()
 NUMBER_OF_SUBSCRIBERS=1
+CONFIG_DIR="20hz_10000_samples"
 LATENCIES_OUTPUT_DIR="/root/workspace/tmp/ros2_iceoryx/latencies"
 PERF_OUTPUT_DIR="/root/workspace/tmp/ros2_iceoryx/perf_data"
 
@@ -31,6 +32,10 @@ while [[ $# -gt 0 ]]; do
 	case $1 in
 	--num-subscribers)
 		NUMBER_OF_SUBSCRIBERS="$2"
+		shift 2
+		;;
+	--config)
+		CONFIG_DIR="$2"
 		shift 2
 		;;
 	*)
@@ -67,9 +72,15 @@ colcon build --packages-select ros2_iceoryx --cmake-args -DCMAKE_EXPORT_COMPILE_
 
 source ./install/setup.bash
 echo ""
-echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers) ..."
+echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers, config: ${CONFIG_DIR}) ..."
 
-mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/configs/20hz_10000_samples/config/*.yaml | sort -V)
+CONFIG_PATH="/root/workspace/configs/${CONFIG_DIR}/config"
+if [[ ! -d "$CONFIG_PATH" ]]; then
+	echo "Error: Config directory not found: $CONFIG_PATH"
+	exit 1
+fi
+
+mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' "${CONFIG_PATH}"/*.yaml | sort -V)
 
 for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 	BENCHMARK_CONFIG_NAME=$(basename "$BENCHMARK_CONFIG" .yaml)

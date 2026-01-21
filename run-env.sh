@@ -29,10 +29,10 @@ else
 	else
 		if [[ -z "$(docker images -q $IMAGE_NAME 2>/dev/null)" ]]; then
 			echo "Image $IMAGE_NAME not found. Building..."
-			COMPOSE_FLAGS="--build --force-recreate"
+			COMPOSE_FLAGS="--build"
 		else
 			echo "Image $IMAGE_NAME found. Starting container..."
-			COMPOSE_FLAGS="--force-recreate"
+			COMPOSE_FLAGS=""
 		fi
 
 		KERNEL_VERSION=$(uname -r) docker compose up -d $COMPOSE_FLAGS $SERVICE_NAME

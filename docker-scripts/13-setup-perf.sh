@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -euo pipefail
 
 if command -v perf &>/dev/null; then
 	echo "Host 'perf' binary is available"

@@ -1,86 +1,23 @@
 #!/bin/bash
 
-set -e
-
-BUILD_DIR="/root/libs"
-
-mkdir -p $BUILD_DIR
-
-echo "Building ZeroMQ ..."
-cd $BUILD_DIR
-git clone https://github.com/zeromq/libzmq.git
-cd libzmq
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_PERF_TOOL=OFF -DZMQ_BUILD_TESTS=OFF
-make -j$(nproc) install
-
-echo "Building cppzmq ..."
-cd $BUILD_DIR
-git clone https://github.com/zeromq/cppzmq.git
-cd cppzmq
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCPPZMQ_BUILD_TESTS=OFF
-make -j$(nproc) install
-
-echo "Building Flatbuffers ..."
-cd $BUILD_DIR
-git clone https://github.com/google/flatbuffers.git
-cd flatbuffers
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=OFF
-make -j$(nproc) install
-
-echo "Building Iceoryx ..."
-mkdir -p ~/iceoryx_ws/src
-cd ~/iceoryx_ws
-source /opt/ros/jazzy/setup.bash
-rosdep init || true
-rosdep update
-vcs import src/ <<EOF
-repositories:
-  rmw_iceoryx:
-    type: git
-    url: https://github.com/ros2/rmw_iceoryx.git
-    version: jazzy
-  rcl_interfaces:
-    type: git
-    url: https://github.com/ros2/rcl_interfaces.git
-    version: jazzy
-  test_interface_files:
-    type: git
-    url: https://github.com/ros2/test_interface_files.git
-    version: jazzy
-EOF
-find src/ -name "package.xml" | head -10
-colcon list --names-only
-if ! rosdep install --from-paths src --ignore-src -y --rosdistro jazzy 2>&1 | grep -q "Failed to install"; then
-	echo "rosdep finished successfully."
-else
-	echo "rosdep encountered errors but continuing."
-fi
-colcon build --packages-select test_interface_files --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --allow-overriding builtin_interfaces
-source install/setup.bash
-colcon build --packages-select test_msgs --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --allow-overriding builtin_interfaces
-source install/setup.bash
-colcon build --packages-up-to rmw_iceoryx_cpp --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-echo "source ~/iceoryx_ws/install/setup.bash" >>~/.bashrc
+set -euo pipefail
 
 echo "Building Iceoryx2 ..."
 source "$HOME/.cargo/env"
+
 if [ -f "/usr/local/lib/libiceoryx2_ffi_c.so" ] && [ -f "/usr/local/lib/libiceoryx2_cpp.so" ]; then
 	echo "Iceoryx2 libraries already installed, skipping build..."
 	exit 0
 fi
-if ! rustup toolchain list | grep -q nightly; then
-	echo "Installing nightly Rust toolchain..."
-	rustup toolchain install nightly --profile minimal --no-self-update
-fi
+
 ICEORYX2_VERSION="v0.8.1"
 ICEORYX2_BUILD_DIR="/tmp/iceoryx2"
+
 echo "Cloning Iceoryx2 ${ICEORYX2_VERSION}..."
 rm -rf "${ICEORYX2_BUILD_DIR}"
 git clone --depth 1 --branch "${ICEORYX2_VERSION}" \
 	https://github.com/eclipse-iceoryx/iceoryx2.git "${ICEORYX2_BUILD_DIR}"
+
 cd "${ICEORYX2_BUILD_DIR}"
 echo "Checking repository structure..."
 echo "Available packages in workspace:"
@@ -183,3 +120,6 @@ ls -la /usr/local/include/iceoryx2/ 2>/dev/null || echo "No headers found"
 ldconfig
 
 rm -rf /tmp/iceoryx2
+
+# Clean up
+apt clean && rm -rf /var/lib/apt/lists/*

@@ -23,6 +23,7 @@ cleanup_ros2() {
 ROS2_PIDS=()
 USE_CUSTOM_DDS_CONFIG=false
 NUMBER_OF_SUBSCRIBERS=1
+CONFIG_DIR="20hz_10000_samples"
 LATENCIES_OUTPUT_DIR="/root/workspace/tmp/ros2_cyclone/latencies"
 PERF_OUTPUT_DIR="/root/workspace/tmp/ros2_cyclone/perf_data"
 
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--num-subscribers)
 		NUMBER_OF_SUBSCRIBERS="$2"
+		shift 2
+		;;
+	--config)
+		CONFIG_DIR="$2"
 		shift 2
 		;;
 	*)
@@ -57,7 +62,7 @@ colcon build --packages-select ros2_cyclone --cmake-args -DCMAKE_EXPORT_COMPILE_
 
 export RMW_IMPLEMENTATION="rmw_cyclonedds_cpp"
 if [[ "$USE_CUSTOM_DDS_CONFIG" = true ]]; then
-	export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General><Internal><Watermarks><WhcHigh>100MB</WhcHigh></Watermarks></Internal></Domain></CycloneDDS>'
+	export CYCLONEDDS_URI='<CycloneDDS><Domain><General><AllowMulticast>false</AllowMulticast><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><MaxMessageSize>65500B</MaxMessageSize></General><Internal><Watermarks><WhcHigh>100MB</WhcHigh></Watermarks></Internal></Domain></CycloneDDS>'
 	echo "DDS: $RMW_IMPLEMENTATION (with custom config)"
 	echo "DDS config: $CYCLONEDDS_URI"
 else
@@ -67,9 +72,15 @@ fi
 
 source ./install/setup.bash
 echo ""
-echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers) ..."
+echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers, config: ${CONFIG_DIR}) ..."
 
-mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/configs/20hz_10000_samples/config/*.yaml | sort -V)
+CONFIG_PATH="/root/workspace/configs/${CONFIG_DIR}/config"
+if [[ ! -d "$CONFIG_PATH" ]]; then
+	echo "Error: Config directory not found: $CONFIG_PATH"
+	exit 1
+fi
+
+mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' "${CONFIG_PATH}"/*.yaml | sort -V)
 
 for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 	BENCHMARK_CONFIG_NAME=$(basename "$BENCHMARK_CONFIG" .yaml)

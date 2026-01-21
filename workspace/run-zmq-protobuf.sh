@@ -24,6 +24,7 @@ ZMQ_PIDS=()
 NUMBER_OF_SUBSCRIBERS=1
 WITH_TCP=false
 WITH_IPC=false
+CONFIG_DIR="20hz_10000_samples"
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -38,6 +39,10 @@ while [[ $# -gt 0 ]]; do
 	--with-ipc)
 		WITH_IPC=true
 		shift 1
+		;;
+	--config)
+		CONFIG_DIR="$2"
+		shift 2
 		;;
 	*)
 		echo "Unknown option: $1"
@@ -77,9 +82,15 @@ make -j$(nproc)
 cd ..
 
 echo ""
-echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers) ..."
+echo "Benchmark started (${NUMBER_OF_SUBSCRIBERS} subscribers, config: ${CONFIG_DIR}) ..."
 
-mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' /root/workspace/configs/20hz_10000_samples/config/*.yaml | sort -V)
+CONFIG_PATH="/root/workspace/configs/${CONFIG_DIR}/config"
+if [[ ! -d "$CONFIG_PATH" ]]; then
+	echo "Error: Config directory not found: $CONFIG_PATH"
+	exit 1
+fi
+
+mapfile -t BENCHMARK_CONFIGS < <(printf '%s\n' "${CONFIG_PATH}"/*.yaml | sort -V)
 
 for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
 	BENCHMARK_CONFIG_NAME=$(basename "$BENCHMARK_CONFIG" .yaml)
