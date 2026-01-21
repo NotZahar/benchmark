@@ -3,12 +3,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+from pathlib import Path
+import argparse
 
 
-def load_and_merge_data(
-    subscriber_csv="perf_subscriber_averages.csv", publisher_csv="perf_publishers.csv"
-):
+def load_and_merge_data(subscriber_csv, publisher_csv):
     """Load and merge subscriber and publisher data."""
 
     # Load subscriber data
@@ -18,8 +17,6 @@ def load_and_merge_data(
     publisher_df = pd.read_csv(publisher_csv)
 
     # Create a combined dataframe
-    # For subscriber data, we have avg_cpu_utilized
-    # For publisher data, we have cpu_utilized
     combined_data = []
 
     # Get all unique configurations
@@ -72,8 +69,6 @@ def load_and_merge_data(
                     row["publisher_cpu_utilized"] = 0
 
                 # Calculate total CPU utilization (publisher + sum of subscribers)
-                # Note: This assumes subscribers run in parallel
-                # For 3 subscribers: total = publisher + (avg_subscriber * 3)
                 row["total_cpu_utilized"] = row["publisher_cpu_utilized"] + (
                     row["subscriber_cpu_utilized"] * row["num_subscribers"]
                 )
@@ -96,14 +91,12 @@ def load_and_merge_data(
     return combined_df
 
 
-def create_publisher_cpu_chart(combined_df):
+def create_publisher_cpu_chart(combined_df, output_dir):
     """Create bar chart showing publisher CPU utilization."""
 
-    # Get unique middlewares and payload sizes
     middlewares = combined_df["middleware"].unique()
     payload_sizes = sorted(combined_df["payload_size"].unique())
 
-    # Format payload size for display
     def format_payload(p):
         if p >= 1048576:
             return f"{p//1048576}MB"
@@ -113,35 +106,22 @@ def create_publisher_cpu_chart(combined_df):
             return f"{p}B"
 
     plt.figure(figsize=(16, 8))
-
-    # Group by payload size
     x = np.arange(len(payload_sizes))
 
-    # Create a color map for consistent coloring
     colors = plt.cm.tab20(np.linspace(0, 1, len(middlewares)))
     color_dict = {mw: colors[i] for i, mw in enumerate(middlewares)}
-
-    # Track which middlewares have been added to legend
     legend_added = set()
 
-    # For each payload size, sort middlewares by publisher CPU in increasing order
     for payload_idx, payload in enumerate(payload_sizes):
-        # Get all data for this payload size
         payload_data = combined_df[combined_df["payload_size"] == payload]
-
-        # Sort middlewares by publisher CPU utilization (increasing order)
         sorted_data = payload_data.sort_values("publisher_cpu_utilized")
-
-        # Calculate bar width based on number of middlewares
         bar_width = 0.8 / len(sorted_data)
 
-        # Plot bars in sorted order
         for bar_idx, (_, row) in enumerate(sorted_data.iterrows()):
             mw = row["middleware"]
             value = row["publisher_cpu_utilized"]
             color = color_dict[mw]
 
-            # Plot bar
             bar = plt.bar(
                 x[payload_idx] + bar_idx * bar_width - 0.4,
                 value,
@@ -150,17 +130,14 @@ def create_publisher_cpu_chart(combined_df):
                 edgecolor="black",
                 label=mw if mw not in legend_added else "",
             )
-
-            # Add to legend set
             legend_added.add(mw)
 
-            # FIXED: Add value label on top of bar for ALL values > 0
-            if value > 0:  # Changed from > 0.5 to > 0
+            if value > 0:
                 height = bar[0].get_height()
                 plt.text(
                     bar[0].get_x() + bar_width / 2.0,
                     height,
-                    f"{value:.1f}%",  # Shows 1 decimal place
+                    f"{value:.1f}%",
                     ha="center",
                     va="bottom",
                     fontsize=8,
@@ -175,28 +152,26 @@ def create_publisher_cpu_chart(combined_df):
     )
     plt.xticks(x, [format_payload(p) for p in payload_sizes], rotation=45)
 
-    # Create custom legend
     from matplotlib.patches import Patch
-
     legend_elements = [Patch(facecolor=color_dict[mw], label=mw) for mw in middlewares]
     plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc="upper left")
 
     plt.grid(True, alpha=0.3, axis="y")
-    plt.ylim(bottom=0)  # Start y-axis from 0
-
+    plt.ylim(bottom=0)
     plt.tight_layout()
-    plt.savefig("perf_publisher_cpu_utilization.png", dpi=300, bbox_inches="tight")
-    plt.show()
+
+    output_path = Path(output_dir) / "perf_publisher_cpu_utilization.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"Created: {output_path}")
 
 
-def create_subscriber_cpu_chart(combined_df):
+def create_subscriber_cpu_chart(combined_df, output_dir):
     """Create bar chart showing subscriber CPU utilization (per subscriber)."""
 
-    # Get unique middlewares and payload sizes
     middlewares = combined_df["middleware"].unique()
     payload_sizes = sorted(combined_df["payload_size"].unique())
 
-    # Format payload size for display
     def format_payload(p):
         if p >= 1048576:
             return f"{p//1048576}MB"
@@ -206,35 +181,22 @@ def create_subscriber_cpu_chart(combined_df):
             return f"{p}B"
 
     plt.figure(figsize=(16, 8))
-
-    # Group by payload size
     x = np.arange(len(payload_sizes))
 
-    # Create a color map for consistent coloring
     colors = plt.cm.tab20(np.linspace(0, 1, len(middlewares)))
     color_dict = {mw: colors[i] for i, mw in enumerate(middlewares)}
-
-    # Track which middlewares have been added to legend
     legend_added = set()
 
-    # For each payload size, sort middlewares by subscriber CPU in increasing order
     for payload_idx, payload in enumerate(payload_sizes):
-        # Get all data for this payload size
         payload_data = combined_df[combined_df["payload_size"] == payload]
-
-        # Sort middlewares by subscriber CPU utilization (increasing order)
         sorted_data = payload_data.sort_values("subscriber_cpu_utilized")
-
-        # Calculate bar width based on number of middlewares
         bar_width = 0.8 / len(sorted_data)
 
-        # Plot bars in sorted order
         for bar_idx, (_, row) in enumerate(sorted_data.iterrows()):
             mw = row["middleware"]
             value = row["subscriber_cpu_utilized"]
             color = color_dict[mw]
 
-            # Plot bar
             bar = plt.bar(
                 x[payload_idx] + bar_idx * bar_width - 0.4,
                 value,
@@ -243,31 +205,26 @@ def create_subscriber_cpu_chart(combined_df):
                 edgecolor="black",
                 label=mw if mw not in legend_added else "",
             )
-
-            # Add to legend set
             legend_added.add(mw)
 
-            # FIXED: Add value label on top of bar for ALL values > 0
-            if value > 0:  # Changed from > 0.5 to > 0
+            if value > 0:
                 height = bar[0].get_height()
-
-                # Use 2 decimal places for very small values (< 0.1%)
                 if value < 0.1:
                     fmt = f"{value:.2f}%"
+                    offset = max(height * 0.02, 0.02)
+                    fontsize = 7
                 else:
                     fmt = f"{value:.1f}%"
+                    offset = 0
+                    fontsize = 8
 
-                # Add a small offset so labels don't sit right on top of tiny bars
-                offset = max(height * 0.02, 0.02)
                 plt.text(
                     bar[0].get_x() + bar_width / 2.0,
                     height + offset,
                     fmt,
                     ha="center",
                     va="bottom",
-                    fontsize=(
-                        7 if value < 0.1 else 8
-                    ),  # Smaller font for very small values
+                    fontsize=fontsize,
                 )
 
     plt.xlabel("Payload Size", fontsize=12, fontweight="bold")
@@ -281,28 +238,26 @@ def create_subscriber_cpu_chart(combined_df):
     )
     plt.xticks(x, [format_payload(p) for p in payload_sizes], rotation=45)
 
-    # Create custom legend
     from matplotlib.patches import Patch
-
     legend_elements = [Patch(facecolor=color_dict[mw], label=mw) for mw in middlewares]
     plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc="upper left")
 
     plt.grid(True, alpha=0.3, axis="y")
-    plt.ylim(bottom=0)  # Start y-axis from 0
-
+    plt.ylim(bottom=0)
     plt.tight_layout()
-    plt.savefig("perf_subscriber_cpu_utilization.png", dpi=300, bbox_inches="tight")
-    plt.show()
+
+    output_path = Path(output_dir) / "perf_subscriber_cpu_utilization.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"Created: {output_path}")
 
 
-def create_total_cpu_chart(combined_df):
+def create_total_cpu_chart(combined_df, output_dir):
     """Create bar chart showing total CPU utilization."""
 
-    # Get unique middlewares and payload sizes
     middlewares = combined_df["middleware"].unique()
     payload_sizes = sorted(combined_df["payload_size"].unique())
 
-    # Format payload size for display
     def format_payload(p):
         if p >= 1048576:
             return f"{p//1048576}MB"
@@ -312,35 +267,22 @@ def create_total_cpu_chart(combined_df):
             return f"{p}B"
 
     plt.figure(figsize=(16, 8))
-
-    # Group by payload size
     x = np.arange(len(payload_sizes))
 
-    # Create a color map for consistent coloring
     colors = plt.cm.tab20(np.linspace(0, 1, len(middlewares)))
     color_dict = {mw: colors[i] for i, mw in enumerate(middlewares)}
-
-    # Track which middlewares have been added to legend
     legend_added = set()
 
-    # For each payload size, sort middlewares by total CPU in increasing order
     for payload_idx, payload in enumerate(payload_sizes):
-        # Get all data for this payload size
         payload_data = combined_df[combined_df["payload_size"] == payload]
-
-        # Sort middlewares by total CPU utilization (increasing order)
         sorted_data = payload_data.sort_values("total_cpu_utilized")
-
-        # Calculate bar width based on number of middlewares
         bar_width = 0.8 / len(sorted_data)
 
-        # Plot bars in sorted order
         for bar_idx, (_, row) in enumerate(sorted_data.iterrows()):
             mw = row["middleware"]
             value = row["total_cpu_utilized"]
             color = color_dict[mw]
 
-            # Plot bar
             bar = plt.bar(
                 x[payload_idx] + bar_idx * bar_width - 0.4,
                 value,
@@ -349,12 +291,9 @@ def create_total_cpu_chart(combined_df):
                 edgecolor="black",
                 label=mw if mw not in legend_added else "",
             )
-
-            # Add to legend set
             legend_added.add(mw)
 
-            # Add value label on top of bar
-            if value > 1:  # Only label values > 1%
+            if value > 1:
                 height = bar[0].get_height()
                 plt.text(
                     bar[0].get_x() + bar_width / 2.0,
@@ -378,62 +317,82 @@ def create_total_cpu_chart(combined_df):
     )
     plt.xticks(x, [format_payload(p) for p in payload_sizes], rotation=45)
 
-    # Create custom legend
     from matplotlib.patches import Patch
-
     legend_elements = [Patch(facecolor=color_dict[mw], label=mw) for mw in middlewares]
     plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc="upper left")
 
     plt.grid(True, alpha=0.3, axis="y")
-    plt.ylim(bottom=0)  # Start y-axis from 0
-
+    plt.ylim(bottom=0)
     plt.tight_layout()
-    plt.savefig("perf_total_cpu_utilization.png", dpi=300, bbox_inches="tight")
-    plt.show()
+
+    output_path = Path(output_dir) / "perf_total_cpu_utilization.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"Created: {output_path}")
 
 
 def main():
-    # Define CSV files
-    subscriber_csv = "perf_subscribers.csv"
-    publisher_csv = "perf_publishers.csv"
+    parser = argparse.ArgumentParser(
+        description="Create CPU utilization plots from performance CSV data"
+    )
+    parser.add_argument(
+        "subscriber_csv",
+        help="Path to subscriber averages CSV file (e.g., perf_subscribers.csv)"
+    )
+    parser.add_argument(
+        "publisher_csv",
+        help="Path to publisher CSV file (e.g., perf_publishers.csv)"
+    )
+    parser.add_argument(
+        "output_dir",
+        help="Directory where plots will be saved"
+    )
+    args = parser.parse_args()
 
-    # Check if files exist
-    if not os.path.exists(subscriber_csv):
-        print(f"Error: {subscriber_csv} not found!")
+    subscriber_path = Path(args.subscriber_csv)
+    publisher_path = Path(args.publisher_csv)
+    output_dir = Path(args.output_dir)
+
+    if not subscriber_path.exists():
+        print(f"Error: Subscriber CSV file '{subscriber_path}' not found!")
         return
 
-    if not os.path.exists(publisher_csv):
-        print(f"Error: {publisher_csv} not found!")
+    if not publisher_path.exists():
+        print(f"Error: Publisher CSV file '{publisher_path}' not found!")
         return
 
-    # Load and merge data
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     print("Loading and processing data...")
-    combined_df = load_and_merge_data(subscriber_csv, publisher_csv)
+    combined_df = load_and_merge_data(subscriber_path, publisher_path)
 
     print(f"\nData loaded:")
     print(f"- Middlewares: {len(combined_df['middleware'].unique())}")
     print(f"- Payload sizes: {len(combined_df['payload_size'].unique())}")
     print(f"- Total configurations: {len(combined_df)}")
 
-    # Print sample of sorted data for publisher CPU
-    print("\nSample of sorted data for 256B payload (Publisher CPU):")
-    sample_256 = combined_df[combined_df["payload_size"] == 256].sort_values(
-        "publisher_cpu_utilized"
-    )
-    for _, row in sample_256.iterrows():
-        print(f"  {row['middleware']:25} {row['publisher_cpu_utilized']:.2f}%")
+    # Print sample data
+    if not combined_df[combined_df["payload_size"] == 256].empty:
+        print("\nSample of sorted data for 256B payload (Publisher CPU):")
+        sample_256 = combined_df[combined_df["payload_size"] == 256].sort_values(
+            "publisher_cpu_utilized"
+        )
+        for _, row in sample_256.iterrows():
+            print(f"  {row['middleware']:25} {row['publisher_cpu_utilized']:.2f}%")
 
-    # Print sample of sorted data for subscriber CPU
-    print("\nSample of sorted data for 256B payload (Subscriber CPU):")
-    sample_256 = combined_df[combined_df["payload_size"] == 256].sort_values(
-        "subscriber_cpu_utilized"
-    )
-    for _, row in sample_256.iterrows():
-        print(f"  {row['middleware']:25} {row['subscriber_cpu_utilized']:.2f}%")
+        print("\nSample of sorted data for 256B payload (Subscriber CPU):")
+        sample_256 = combined_df[combined_df["payload_size"] == 256].sort_values(
+            "subscriber_cpu_utilized"
+        )
+        for _, row in sample_256.iterrows():
+            print(f"  {row['middleware']:25} {row['subscriber_cpu_utilized']:.2f}%")
 
     # Create all three charts
-    create_publisher_cpu_chart(combined_df)
-    create_subscriber_cpu_chart(combined_df)
+    create_publisher_cpu_chart(combined_df, output_dir)
+    create_subscriber_cpu_chart(combined_df, output_dir)
+    create_total_cpu_chart(combined_df, output_dir)
+
+    print("\nAll CPU utilization plots created successfully!")
 
 
 if __name__ == "__main__":

@@ -4,17 +4,25 @@ import os
 import re
 import csv
 from pathlib import Path
+import sys
+import argparse
 
-
-def process_latencies():
+def process_latencies(input_path, output_path):
     data = []
 
-    # Find all latencies directories
-    for root, dirs, files in os.walk("."):
-        if not root.endswith("latencies"):
+    # Ensure output directory exists
+    output_dir = Path(output_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Convert input_path to Path object for easier handling
+    input_root = Path(input_path)
+
+    # Find all latencies directories starting from input_path
+    for root, dirs, files in os.walk(input_root):
+        if not str(root).endswith("latencies"):
             continue
 
-        # Get middleware name
+        # Get middleware name (parent of latencies directory)
         middleware = Path(root).parent.name
 
         # Process each payload size directory
@@ -29,14 +37,14 @@ def process_latencies():
             hz = 1000.0 / period_ms
 
             # Path to subscriber files
-            subdir_path = os.path.join(root, subdir)
+            subdir_path = Path(root) / subdir
 
             # Collect data from all 3 subscribers
             latencies = {"avg": [], "median": [], "p99": []}
 
             for i in range(1, 4):
-                file_path = os.path.join(subdir_path, f"{i}_subscriber.txt")
-                if not os.path.exists(file_path):
+                file_path = subdir_path / f"{i}_subscriber.txt"
+                if not file_path.exists():
                     continue
 
                 with open(file_path, "r") as f:
@@ -74,8 +82,9 @@ def process_latencies():
     # Sort by middleware and payload size
     data.sort(key=lambda x: (x["middleware"], x["payload_size"]))
 
-    # Write to CSV
-    with open("latencies.csv", "w", newline="") as f:
+    # Write to CSV in the specified output directory
+    csv_path = output_dir / "latencies.csv"
+    with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(
             f,
             fieldnames=[
@@ -89,14 +98,24 @@ def process_latencies():
         )
         writer.writeheader()
         for row in data:
-            row["avg_latency_ms"] = f"{row['avg_latency_ms']:.6f}"
-            row["median_latency_ms"] = f"{row['median_latency_ms']:.6f}"
-            row["p99_latency_ms"] = f"{row['p99_latency_ms']:.6f}"
-            writer.writerow(row)
+            # Format floats to 6 decimal places
+            formatted_row = {k: (f"{v:.6f}" if isinstance(v, float) else v) for k, v in row.items()}
+            writer.writerow(formatted_row)
 
-    print(f"Created latencies.csv with {len(data)} entries")
+    print(f"Created {csv_path} with {len(data)} entries")
     return data
 
 
 if __name__ == "__main__":
-    process_latencies()
+    parser = argparse.ArgumentParser(description="Process latency measurement data.")
+    parser.add_argument(
+        "input_path",
+        help="Path to the root directory containing latency measurement data"
+    )
+    parser.add_argument(
+        "output_path",
+        help="Path to the directory where results will be saved"
+    )
+    
+    args = parser.parse_args()
+    process_latencies(args.input_path, args.output_path)

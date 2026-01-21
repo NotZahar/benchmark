@@ -4,17 +4,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from pathlib import Path
 import argparse
 
 
 def create_sorted_bar_chart(
-    df, metric="avg_latency_ms", title="Average Latency", exclude_middlewares=None
+    df, metric="avg_latency_ms", title="Average Latency", exclude_middlewares=None, output_dir="."
 ):
     """Create bar chart with bars sorted in increasing order for each payload size."""
 
     # Filter out excluded middlewares
     if exclude_middlewares:
         df = df[~df["middleware"].isin(exclude_middlewares)]
+
+    if df.empty:
+        print(f"Warning: No data left after filtering for {title}. Skipping plot.")
+        return
 
     # Get unique payload sizes and middlewares
     payload_sizes = sorted(df["payload_size"].unique())
@@ -116,20 +121,25 @@ def create_sorted_bar_chart(
     else:
         filename = f"bar_chart_{metric.split('_')[0]}.png"
 
-    plt.savefig(filename, dpi=300, bbox_inches="tight")
-    plt.show()
+    full_path = Path(output_dir) / filename
+    plt.savefig(full_path, dpi=300, bbox_inches="tight")
+    plt.close()  # Close to free memory
 
-    print(f"Created: {filename}")
+    print(f"Created: {full_path}")
 
 
 def create_line_plot(
-    df, metric="avg_latency_ms", title="Average Latency", exclude_middlewares=None
+    df, metric="avg_latency_ms", title="Average Latency", exclude_middlewares=None, output_dir="."
 ):
     """Create line plot showing all middlewares."""
 
     # Filter out excluded middlewares
     if exclude_middlewares:
         df = df[~df["middleware"].isin(exclude_middlewares)]
+
+    if df.empty:
+        print(f"Warning: No data left after filtering for {title}. Skipping plot.")
+        return
 
     middlewares = df["middleware"].unique()
     payload_sizes = sorted(df["payload_size"].unique())
@@ -187,29 +197,41 @@ def create_line_plot(
     else:
         filename = f"latencies_{metric.split('_')[0]}.png"
 
-    plt.savefig(filename, dpi=300, bbox_inches="tight")
-    plt.show()
+    full_path = Path(output_dir) / filename
+    plt.savefig(full_path, dpi=300, bbox_inches="tight")
+    plt.close()  # Close to free memory
 
-    print(f"Created: {filename}")
+    print(f"Created: {full_path}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Create latency plots with optional middleware exclusion"
+        description="Create latency plots from CSV data with optional middleware exclusion"
+    )
+    parser.add_argument(
+        "input_csv",
+        help="Path to the input CSV file (e.g., latencies.csv)"
+    )
+    parser.add_argument(
+        "output_dir",
+        help="Directory where plots will be saved"
     )
     parser.add_argument(
         "--exclude", nargs="+", help="List of middlewares to exclude", default=None
     )
     args = parser.parse_args()
 
-    csv_file = "latencies.csv"
+    input_csv = Path(args.input_csv)
+    output_dir = Path(args.output_dir)
 
-    if not os.path.exists(csv_file):
-        print(f"Error: {csv_file} not found!")
+    if not input_csv.exists():
+        print(f"Error: Input CSV file '{input_csv}' not found!")
         return
 
-    print(f"Reading {csv_file}...")
-    df = pd.read_csv(csv_file)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"Reading {input_csv}...")
+    df = pd.read_csv(input_csv)
 
     # Show available middlewares
     all_middlewares = df["middleware"].unique()
@@ -225,16 +247,28 @@ def main():
     print("\nCreating sorted bar charts...")
     print("=" * 50)
 
-    create_sorted_bar_chart(df, "avg_latency_ms", "Average Latency", args.exclude)
-    create_sorted_bar_chart(df, "median_latency_ms", "Median Latency", args.exclude)
-    create_sorted_bar_chart(df, "p99_latency_ms", "P99 Latency", args.exclude)
+    create_sorted_bar_chart(
+        df, "avg_latency_ms", "Average Latency", args.exclude, output_dir
+    )
+    create_sorted_bar_chart(
+        df, "median_latency_ms", "Median Latency", args.exclude, output_dir
+    )
+    create_sorted_bar_chart(
+        df, "p99_latency_ms", "P99 Latency", args.exclude, output_dir
+    )
 
     print("\nCreating line plots...")
     print("=" * 50)
 
-    create_line_plot(df, "avg_latency_ms", "Average Latency", args.exclude)
-    create_line_plot(df, "median_latency_ms", "Median Latency", args.exclude)
-    create_line_plot(df, "p99_latency_ms", "P99 Latency", args.exclude)
+    create_line_plot(
+        df, "avg_latency_ms", "Average Latency", args.exclude, output_dir
+    )
+    create_line_plot(
+        df, "median_latency_ms", "Median Latency", args.exclude, output_dir
+    )
+    create_line_plot(
+        df, "p99_latency_ms", "P99 Latency", args.exclude, output_dir
+    )
 
     print("\n" + "=" * 50)
     print("All plots created successfully!")
