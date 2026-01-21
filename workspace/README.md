@@ -13,5 +13,5 @@
     - With ipc and 1 subscriber: `./run-zmq-protobuf.sh --num-subscribers 1 --with-ipc`
 
 ### Where are results
-- Latency: `./tmp/TRANSPORT_TYPE/latencies`
-- Perf stat: `./tmp/TRANSPORT_TYPE/perf_data`
+- Latency: `./tmp/TRANSPORT_TYPE/latencies/`
+- Perf stat: `./tmp/TRANSPORT_TYPE/perf_data/`
