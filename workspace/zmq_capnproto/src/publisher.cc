@@ -2,6 +2,7 @@
 #include <capnp/serialize-packed.h>
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <kj/array.h>
 #include <kj/common.h>
@@ -24,7 +25,10 @@ public:
   Publisher() = delete;
 
   Publisher(utils::Config config, std::string transport_type) noexcept
-      : config_{config}, message_number_{0}, context_{1},
+      : config_{config}, 
+        payload_size_{config.payload_size_bytes},
+        message_number_{0}, 
+        context_{1},
         socket_{context_, zmq::socket_type::pub} {
 
     std::filesystem::remove("/tmp/zmq_benchmark_capnp.ipc");
@@ -52,15 +56,18 @@ private:
   void tick() noexcept {
     capnp::MallocMessageBuilder message_builder;
 
-    std::vector<uint8_t> payload_data_vec(config_.payload_size_bytes, 
+    std::vector<uint8_t> payload_data_vec(payload_size_, 
                                           static_cast<uint8_t>(constants::PAYLOAD_DATA_CHUNK));
 
     auto payload_builder = message_builder.initRoot<tb_proto::Payload>();
     
-    payload_builder.setTimeStampNs(utils::now());
-    payload_builder.setMessageNumber(message_number_++);
+    auto timestamp = utils::now();
+    auto msg_num = message_number_++;
+    
+    payload_builder.setTimeStampNs(timestamp);
+    payload_builder.setMessageNumber(msg_num);
 
-    kj::ArrayPtr<const uint8_t> data_array_ptr(payload_data_vec.data(), payload_data_vec.size());
+    kj::ArrayPtr<const uint8_t> data_array_ptr(payload_data_vec.data(), payload_size_);
     payload_builder.setData(data_array_ptr);
 
     kj::VectorOutputStream raw_output_stream;
@@ -68,13 +75,18 @@ private:
 
     kj::ArrayPtr<const kj::byte> serialized_data = raw_output_stream.getArray();
     
-    zmq::message_t zmq_message(serialized_data.size());
+    static zmq::message_t zmq_message;
+    
+    if (zmq_message.size() < serialized_data.size()) {
+      zmq_message.rebuild(serialized_data.size());
+    }
+    
     std::memcpy(zmq_message.data(), serialized_data.begin(), serialized_data.size());
-
     socket_.send(zmq_message, zmq::send_flags::none);
   }
 
   const utils::Config config_;
+  const size_t payload_size_;
   std::uint32_t message_number_;
   zmq::context_t context_;
   zmq::socket_t socket_;
