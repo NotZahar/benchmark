@@ -12,6 +12,7 @@ services:
     cap_add:
       - SYS_NICE # NOTE: Real-time scheduling
       - IPC_LOCK # NOTE: Memory locking - no swap
+      - SYS_PTRACE # NOTE: For perf
     ulimits:
       memlock: -1 # NOTE: Unlimited memory locking
     volumes:
@@ -20,3 +21,6 @@ services:
       - /usr/bin/perf:/usr/bin/perf:ro # host is Ubuntu 25
     tty: true
     stdin_open: true
+    sysctls:
+      - net.core.rmem_max=134217728
+      - net.core.wmem_max=134217728
