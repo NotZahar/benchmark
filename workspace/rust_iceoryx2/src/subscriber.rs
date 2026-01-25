@@ -21,7 +21,9 @@ fn main() -> anyhow::Result<()> {
         .name(&node_name)
         .create::<ipc::Service>()?;
 
-    let service_name: ServiceName = "BenchmarkService".try_into()?;
+    let service_name_str = "BenchmarkService_Shared";
+    let service_name: ServiceName = service_name_str.try_into()?;
+
     let service = node
         .service_builder(&service_name)
         .publish_subscribe::<[u8]>()
@@ -37,32 +39,29 @@ fn main() -> anyhow::Result<()> {
             let sample_slice = sample.payload();
 
             if sample_slice.len() < 12 {
-                eprintln!("Sample too small");
+                eprintln!("Sample too small: {}", sample_slice.len());
                 continue;
             }
 
-            let timestamp = i64::from_le_bytes(
-                sample_slice[0..8].try_into().map_err(|_| anyhow::anyhow!("Failed to read timestamp"))?
-            );
-
-            let _message_number = u32::from_le_bytes(
-                sample_slice[8..12].try_into().map_err(|_| anyhow::anyhow!("Failed to read message number"))?
-            );
+            let timestamp_bytes: [u8; 8] = sample_slice[0..8].try_into()?;
+            let timestamp = i64::from_le_bytes(timestamp_bytes);
 
             let data_start = 12;
             let data_end = data_start + config.payload_size_bytes;
 
             if data_end > sample_slice.len() {
-                eprintln!("Invalid payload size in sample");
+                eprintln!("Invalid payload size: expected {}, got {}",
+                         data_end - data_start, sample_slice.len() - data_start);
                 continue;
             }
 
             if !sample_slice[data_start..data_end].iter().all(|&b| b == PAYLOAD_DATA_CHUNK) {
-                eprintln!("Invalid data pattern");
+                eprintln!("Invalid data pattern detected");
                 continue;
             }
 
-            latencies.push(now - timestamp);
+            let latency = now - timestamp;
+            latencies.push(latency);
         }
     }
 

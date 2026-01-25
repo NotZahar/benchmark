@@ -20,7 +20,8 @@ fn main() -> anyhow::Result<()> {
         .name(&node_name)
         .create::<ipc::Service>()?;
 
-    let service_name: ServiceName = "BenchmarkService".try_into()?;
+    let service_name_str = "BenchmarkService_Shared";
+    let service_name: ServiceName = service_name_str.try_into()?;
 
     let service = node
         .service_builder(&service_name)
@@ -39,24 +40,23 @@ fn main() -> anyhow::Result<()> {
 
     while message_number < config.number_of_samples {
         let next_wake = SystemTime::now() + period;
+
         let total_size = config.payload_size_bytes + 12;
+        let mut local_buffer = vec![PAYLOAD_DATA_CHUNK; total_size];
+
+        let timestamp = utils::now();
+        let timestamp_bytes = timestamp.to_le_bytes();
+        local_buffer[0..8].copy_from_slice(&timestamp_bytes); // 8 → 8 bytes
+
+        let msg_number_u32 = message_number as u32; // Cast to 32-bit integer
+        let msg_bytes = msg_number_u32.to_le_bytes(); // This will be 4 bytes
+        local_buffer[8..12].copy_from_slice(&msg_bytes); // 4 → 4 bytes
 
         let mut sample = publisher.loan_slice_uninit(total_size)?;
         let payload = sample.payload_mut();
 
-        let timestamp = utils::now();
-        let timestamp_bytes = timestamp.to_le_bytes();
-        for i in 0..8 {
-            payload[i] = MaybeUninit::new(timestamp_bytes[i]);
-        }
-
-        let msg_bytes = message_number.to_le_bytes();
-        for i in 0..4 {
-            payload[8 + i] = MaybeUninit::new(msg_bytes[i]);
-        }
-
-        for i in 12..payload.len() {
-            payload[i] = MaybeUninit::new(PAYLOAD_DATA_CHUNK);
+        for (i, &byte) in local_buffer.iter().enumerate() {
+            payload[i] = MaybeUninit::new(byte);
         }
 
         let initialized_sample = unsafe { sample.assume_init() };

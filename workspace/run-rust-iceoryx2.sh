@@ -3,6 +3,21 @@
 set -eu
 
 cleanup_iceoryx() {
+    echo "Cleaning up iceoryx processes..."
+
+    # Clean up perf stat processes first
+    for PERF_PID in "${PERF_PIDS[@]}"; do
+        if kill -0 "$PERF_PID" 2> /dev/null; then
+            kill -INT "$PERF_PID" 2> /dev/null || true
+        fi
+    done
+
+    for PERF_PID in "${PERF_PIDS[@]}"; do
+        if kill -0 "$PERF_PID" 2> /dev/null; then
+            wait "$PERF_PID" 2> /dev/null || true
+        fi
+    done
+
     for ICEORYX_PID in "${ICEORYX_PIDS[@]}"; do
         if kill -0 "$ICEORYX_PID" 2> /dev/null; then
             kill -TERM "$ICEORYX_PID" 2> /dev/null || true
@@ -17,10 +32,18 @@ cleanup_iceoryx() {
         fi
     done
 
+    pkill -TERM -f 'iox-roudi' 2> /dev/null || true
+    pkill -KILL -f 'iox-roudi' 2> /dev/null || true
+
+    pkill -TERM -f 'rust_iceoryx2' 2> /dev/null || true
     pkill -KILL -f 'rust_iceoryx2' 2> /dev/null || true
+
+    rm -rf /tmp/iceoryx* 2> /dev/null || true
+    rm -rf /dev/shm/iceoryx* 2> /dev/null || true
 }
 
 ICEORYX_PIDS=()
+PERF_PIDS=()
 NUMBER_OF_SUBSCRIBERS=1
 CONFIG_DIR="20hz_10000_samples"
 
@@ -52,6 +75,11 @@ mkdir -p "$PERF_OUTPUT_DIR"
 
 cd /root/workspace/rust_iceoryx2
 
+echo "Starting iceoryx daemon..."
+iox-roudi -c /etc/iceoryx/roudi_config.toml > /dev/null 2>&1 &
+IOX_DAEMON_PID=$!
+sleep 1
+
 echo "Building Rust project..."
 cargo build --release
 
@@ -80,9 +108,12 @@ for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
         SUBSCRIBER_PIDS+=($ICEORYX_SUBSCRIBER_PID)
         ICEORYX_PIDS+=($ICEORYX_SUBSCRIBER_PID)
 
+        sleep 0.1
+
         perf stat -p "$ICEORYX_SUBSCRIBER_PID" -o "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}/${I}_subscriber.stat.txt" &
         PERF_STAT_SUBSCRIBER_PID=$!
         PERF_STAT_SUBSCRIBER_PIDS+=($PERF_STAT_SUBSCRIBER_PID)
+        PERF_PIDS+=($PERF_STAT_SUBSCRIBER_PID)
     done
 
     sleep 2
@@ -91,13 +122,18 @@ for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
     ICEORYX_PUBLISHER_PID=$!
     ICEORYX_PIDS+=($ICEORYX_PUBLISHER_PID)
 
+    sleep 0.1
+
     perf stat -p "$ICEORYX_PUBLISHER_PID" -o "${PERF_OUTPUT_DIR}/${BENCHMARK_CONFIG_NAME}/publisher.stat.txt" &
     PERF_STAT_PUBLISHER_PID=$!
+    PERF_PIDS+=($PERF_STAT_PUBLISHER_PID)
 
+    echo "Waiting for subscribers to complete..."
     for SUBSCRIBER_PID in "${SUBSCRIBER_PIDS[@]}"; do
         wait "$SUBSCRIBER_PID" 2> /dev/null || true
     done
 
+    echo "Stopping perf monitoring..."
     for PERF_STAT_SUBSCRIBER_PID in "${PERF_STAT_SUBSCRIBER_PIDS[@]}"; do
         kill -INT "$PERF_STAT_SUBSCRIBER_PID" 2> /dev/null || true
     done
@@ -109,10 +145,17 @@ for BENCHMARK_CONFIG in "${BENCHMARK_CONFIGS[@]}"; do
     done
     wait "$PERF_STAT_PUBLISHER_PID" 2> /dev/null || true
 
+    echo "Cleaning up benchmark run..."
     cleanup_iceoryx
     ICEORYX_PIDS=()
+    PERF_PIDS=()
 
     sleep 1
 done
+
+echo "Stopping iceoryx daemon..."
+kill -TERM "$IOX_DAEMON_PID" 2> /dev/null || true
+sleep 1
+kill -KILL "$IOX_DAEMON_PID" 2> /dev/null || true
 
 echo "All benchmarks completed!"
