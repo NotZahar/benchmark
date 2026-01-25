@@ -13,12 +13,13 @@ inline constexpr auto METADATA_OVERHEAD = 256;
 namespace tb {
 
 class Publisher {
-public:
+ public:
   Publisher() = delete;
   Publisher(utils::Config config, std::string transport_type) noexcept
       : config_{config},
         builder_{config_.payload_size_bytes + METADATA_OVERHEAD},
-        message_number_{0}, context_{1},
+        message_number_{0},
+        context_{1},
         socket_{context_, zmq::socket_type::pub} {
     std::filesystem::remove("/tmp/zmq_benchmark_flat.ipc");
     socket_.bind(transport_type == "tcp" ? constants::ZMQ_TCP_ENDPOINT
@@ -39,7 +40,7 @@ public:
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-private:
+ private:
   void tick() noexcept {
     builder_.Clear();
 
@@ -61,11 +62,10 @@ private:
   zmq::socket_t socket_;
 };
 
-} // namespace tb
+}  // namespace tb
 
-int main(int argc, char **argv) {
-  if (argc != 3)
-    return tb::constants::FAILED_APP_FINISH;
+int main(int argc, char** argv) {
+  if (argc != 3) return tb::constants::FAILED_APP_FINISH;
 
   tb::Publisher publisher{tb::utils::parseConfig(argv[1]), argv[2]};
   publisher.run();

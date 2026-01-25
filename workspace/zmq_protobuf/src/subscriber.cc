@@ -14,14 +14,15 @@
 namespace tb {
 
 class Subscriber {
-public:
+ public:
   Subscriber() = delete;
 
   Subscriber(utils::Config config, int instance_id, std::string transport_type)
-      : config_{config}, transport_type_{std::move(transport_type)},
-        instance_id_{instance_id}, context_{1},
+      : config_{config},
+        transport_type_{std::move(transport_type)},
+        instance_id_{instance_id},
+        context_{1},
         socket_{context_, zmq::socket_type::sub} {
-
     latencies_.reserve(config_.number_of_samples);
 
     socket_.connect(transport_type_ == "tcp" ? constants::ZMQ_TCP_ENDPOINT
@@ -50,13 +51,12 @@ public:
     while (latencies_.size() < config_.number_of_samples) {
       zmq::message_t message;
       const auto result = socket_.recv(message, zmq::recv_flags::none);
-      if (result)
-        tack(message);
+      if (result) tack(message);
     }
   }
 
-private:
-  void tack(const zmq::message_t &message) {
+ private:
+  void tack(const zmq::message_t& message) {
     tb_proto::Payload payload;
 
     if (!payload.ParseFromArray(message.data(),
@@ -84,11 +84,10 @@ private:
   zmq::socket_t socket_;
 };
 
-} // namespace tb
+}  // namespace tb
 
-int main(int argc, char **argv) {
-  if (argc != 4)
-    return tb::constants::FAILED_APP_FINISH;
+int main(int argc, char** argv) {
+  if (argc != 4) return tb::constants::FAILED_APP_FINISH;
 
   tb::Subscriber subscriber{tb::utils::parseConfig(argv[1]), std::stoi(argv[2]),
                             argv[3]};

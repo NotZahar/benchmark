@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+import argparse
+import csv
 import os
 import re
-import csv
-from pathlib import Path
 from collections import defaultdict
-import argparse
+from pathlib import Path
 
 
 def parse_perf_file(file_path):
@@ -107,16 +107,30 @@ def create_subscriber_averages(subscriber_grouped_data):
             all_keys.update(metrics.keys())
 
         for key in all_keys:
-            values = [m[key] for m in metrics_list if key in m and isinstance(m[key], (int, float))]
+            values = [
+                m[key]
+                for m in metrics_list
+                if key in m and isinstance(m[key], (int, float))
+            ]
             if values:
                 result[f"avg_{key}"] = sum(values) / len(values)
 
         # Derived metrics
-        if "avg_instructions" in result and "avg_cycles" in result and result["avg_cycles"] > 0:
+        if (
+            "avg_instructions" in result
+            and "avg_cycles" in result
+            and result["avg_cycles"] > 0
+        ):
             result["avg_ipc"] = result["avg_instructions"] / result["avg_cycles"]
 
-        if "avg_branch_misses" in result and "avg_branches" in result and result["avg_branches"] > 0:
-            result["avg_branch_miss_rate"] = (result["avg_branch_misses"] / result["avg_branches"]) * 100
+        if (
+            "avg_branch_misses" in result
+            and "avg_branches" in result
+            and result["avg_branches"] > 0
+        ):
+            result["avg_branch_miss_rate"] = (
+                result["avg_branch_misses"] / result["avg_branches"]
+            ) * 100
 
         averaged_data.append(result)
 
@@ -148,8 +162,14 @@ def process_publisher_data(publisher_data):
         if "instructions" in result and "cycles" in result and result["cycles"] > 0:
             result["ipc"] = result["instructions"] / result["cycles"]
 
-        if "branch_misses" in result and "branches" in result and result["branches"] > 0:
-            result["branch_miss_rate"] = (result["branch_misses"] / result["branches"]) * 100
+        if (
+            "branch_misses" in result
+            and "branches" in result
+            and result["branches"] > 0
+        ):
+            result["branch_miss_rate"] = (
+                result["branch_misses"] / result["branches"]
+            ) * 100
 
         publisher_processed.append(result)
 
@@ -187,14 +207,16 @@ def write_csv(data, output_path, filename):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process performance measurement data from perf stat outputs.")
+    parser = argparse.ArgumentParser(
+        description="Process performance measurement data from perf stat outputs."
+    )
     parser.add_argument(
         "input_path",
-        help="Path to the root directory containing performance data (e.g., ./measurements)"
+        help="Path to the root directory containing performance data (e.g., ./measurements)",
     )
     parser.add_argument(
         "output_path",
-        help="Path to the directory where CSV results will be saved (e.g., ./results)"
+        help="Path to the directory where CSV results will be saved (e.g., ./results)",
     )
     args = parser.parse_args()
 
@@ -223,7 +245,9 @@ def main():
     print(f"- Subscriber configurations: {len(subscriber_averages)}")
     print(f"- Publisher configurations: {len(publisher_data)}")
     print(f"- Middlewares: {sorted(set(d['middleware'] for d in subscriber_averages))}")
-    print(f"- Payload sizes: {sorted(set(d['payload_size'] for d in subscriber_averages))}")
+    print(
+        f"- Payload sizes: {sorted(set(d['payload_size'] for d in subscriber_averages))}"
+    )
 
     print("\nCreating separate CSVs...")
     write_csv(subscriber_averages, output_dir, "perf_subscribers.csv")

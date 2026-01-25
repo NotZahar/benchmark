@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
+import argparse
 import os
 from pathlib import Path
-import argparse
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 
 def create_sorted_bar_chart(
-    df, metric="avg_latency_ms", title="Average Latency", exclude_middlewares=None, output_dir="."
+    df,
+    metric="avg_latency_ms",
+    title="Average Latency",
+    exclude_middlewares=None,
+    output_dir=".",
 ):
     """Create bar chart with bars sorted in increasing order for each payload size."""
 
@@ -96,9 +101,9 @@ def create_sorted_bar_chart(
     # Format x-axis labels
     def format_payload(p):
         if p >= 1048576:
-            return f"{p//1048576}MB"
+            return f"{p // 1048576}MB"
         elif p >= 1024:
-            return f"{p//1024}KB"
+            return f"{p // 1024}KB"
         else:
             return f"{p}B"
 
@@ -129,7 +134,11 @@ def create_sorted_bar_chart(
 
 
 def create_line_plot(
-    df, metric="avg_latency_ms", title="Average Latency", exclude_middlewares=None, output_dir="."
+    df,
+    metric="avg_latency_ms",
+    title="Average Latency",
+    exclude_middlewares=None,
+    output_dir=".",
 ):
     """Create line plot showing all middlewares."""
 
@@ -179,9 +188,9 @@ def create_line_plot(
 
     def format_payload(p):
         if p >= 1048576:
-            return f"{p//1048576}MB"
+            return f"{p // 1048576}MB"
         elif p >= 1024:
-            return f"{p//1024}KB"
+            return f"{p // 1024}KB"
         else:
             return f"{p}B"
 
@@ -209,13 +218,9 @@ def main():
         description="Create latency plots from CSV data with optional middleware exclusion"
     )
     parser.add_argument(
-        "input_csv",
-        help="Path to the input CSV file (e.g., latencies.csv)"
+        "input_csv", help="Path to the input CSV file (e.g., latencies.csv)"
     )
-    parser.add_argument(
-        "output_dir",
-        help="Directory where plots will be saved"
-    )
+    parser.add_argument("output_dir", help="Directory where plots will be saved")
     parser.add_argument(
         "--exclude", nargs="+", help="List of middlewares to exclude", default=None
     )
@@ -260,15 +265,11 @@ def main():
     print("\nCreating line plots...")
     print("=" * 50)
 
-    create_line_plot(
-        df, "avg_latency_ms", "Average Latency", args.exclude, output_dir
-    )
+    create_line_plot(df, "avg_latency_ms", "Average Latency", args.exclude, output_dir)
     create_line_plot(
         df, "median_latency_ms", "Median Latency", args.exclude, output_dir
     )
-    create_line_plot(
-        df, "p99_latency_ms", "P99 Latency", args.exclude, output_dir
-    )
+    create_line_plot(df, "p99_latency_ms", "P99 Latency", args.exclude, output_dir)
 
     print("\n" + "=" * 50)
     print("All plots created successfully!")

@@ -11,10 +11,11 @@
 namespace tb {
 
 class Publisher final : public rclcpp::Node {
-public:
+ public:
   Publisher() = delete;
   explicit Publisher(utils::Config config) noexcept
-      : Node{constants::PUBLISHER_NODE_NAME}, config_{config},
+      : Node{constants::PUBLISHER_NODE_NAME},
+        config_{config},
         message_number_{0} {
     publisher_ = create_publisher<ros2_iceoryx::msg::Payload>(
         constants::BENCHMARK_TOPIC, constants::BENCHMARK_QOS);
@@ -25,7 +26,7 @@ public:
 
   ~Publisher() override = default;
 
-private:
+ private:
   void tick() noexcept {
     ros2_iceoryx::msg::Payload message;
     message.data.resize(config_.payload_size_bytes,
@@ -42,9 +43,9 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
 };
 
-} // namespace tb
+}  // namespace tb
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   if (argc != 2) {
     std::cerr << __FUNCTION__ << ": " << __LINE__ << std::endl;
     std::abort();

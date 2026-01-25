@@ -1,5 +1,7 @@
 #pragma once
 
+#include <yaml-cpp/yaml.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -8,12 +10,11 @@
 #include <numeric>
 #include <string>
 #include <vector>
-#include <yaml-cpp/yaml.h>
 
 namespace {
 
-[[nodiscard]] inline double
-makeAverage(const std::vector<std::int64_t> &latencies) noexcept {
+[[nodiscard]] inline double makeAverage(
+    const std::vector<std::int64_t>& latencies) noexcept {
   const auto number_of_samples = latencies.size();
 
   return static_cast<double>(
@@ -21,8 +22,8 @@ makeAverage(const std::vector<std::int64_t> &latencies) noexcept {
          static_cast<double>(number_of_samples);
 }
 
-[[nodiscard]] inline double
-makeMedian(const std::vector<std::int64_t> &latencies) noexcept {
+[[nodiscard]] inline double makeMedian(
+    const std::vector<std::int64_t>& latencies) noexcept {
   const auto number_of_samples = latencies.size();
 
   return (number_of_samples % 2 == 1)
@@ -32,20 +33,19 @@ makeMedian(const std::vector<std::int64_t> &latencies) noexcept {
                     static_cast<double>(latencies[number_of_samples / 2]));
 }
 
-[[nodiscard]] inline std::int64_t
-makeP99(const std::vector<std::int64_t> &latencies) noexcept {
+[[nodiscard]] inline std::int64_t makeP99(
+    const std::vector<std::int64_t>& latencies) noexcept {
   const auto number_of_samples = latencies.size();
 
   std::size_t index99 = static_cast<std::size_t>(
       std::ceil(0.99 * static_cast<double>(number_of_samples)));
   index99 = (index99 == 0 ? 0 : index99 - 1);
-  if (index99 >= number_of_samples)
-    index99 = number_of_samples - 1;
+  if (index99 >= number_of_samples) index99 = number_of_samples - 1;
 
   return latencies[index99];
 }
 
-} // namespace
+}  // namespace
 
 namespace tb::utils {
 
@@ -55,8 +55,8 @@ struct Config {
   std::size_t number_of_samples;
 };
 
-[[nodiscard]] inline Config
-parseConfig(const std::string path_to_config) noexcept {
+[[nodiscard]] inline Config parseConfig(
+    const std::string path_to_config) noexcept {
   Config config;
 
   if (!std::filesystem::is_regular_file(path_to_config)) {
@@ -85,9 +85,8 @@ parseConfig(const std::string path_to_config) noexcept {
   return config;
 }
 
-[[nodiscard]] inline std::string
-makeBenchmarkResult(Config config,
-                    std::vector<std::int64_t> latencies) noexcept {
+[[nodiscard]] inline std::string makeBenchmarkResult(
+    Config config, std::vector<std::int64_t> latencies) noexcept {
   if (latencies.size() != config.number_of_samples)
     return "Invalid input data\n";
 
@@ -122,4 +121,4 @@ makeBenchmarkResult(Config config,
   return t2 - t1;
 }
 
-} // namespace tb::utils
+}  // namespace tb::utils

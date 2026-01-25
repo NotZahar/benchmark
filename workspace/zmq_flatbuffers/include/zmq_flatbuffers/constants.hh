@@ -10,4 +10,4 @@ inline constexpr auto RESULTS_FILE_PATH = "/root/workspace/tmp/zmq_flatbuffers";
 inline constexpr auto SUCCESS_APP_FINISH = 0;
 inline constexpr auto FAILED_APP_FINISH = 1;
 
-} // namespace tb::constants
+}  // namespace tb::constants

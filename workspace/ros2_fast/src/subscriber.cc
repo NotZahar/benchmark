@@ -13,12 +13,13 @@
 namespace tb {
 
 class Subscriber final : public rclcpp::Node {
-public:
+ public:
   Subscriber() = delete;
   Subscriber(utils::Config config, int instance_id) noexcept
       : Node{std::string{constants::SUBSCRIBER_NODE_NAME} + "_" +
              std::to_string(instance_id)},
-        config_{config}, instance_id_{instance_id} {
+        config_{config},
+        instance_id_{instance_id} {
     latencies_.reserve(config_.number_of_samples);
     subscriber_ = create_subscription<ros2_fast::msg::Payload>(
         constants::BENCHMARK_TOPIC, constants::BENCHMARK_QOS,
@@ -43,7 +44,7 @@ public:
     out.close();
   }
 
-private:
+ private:
   void tack(ros2_fast::msg::Payload::ConstSharedPtr message) noexcept {
     if (message->data.empty() ||
         message->data[0] != constants::PAYLOAD_DATA_CHUNK) {
@@ -52,8 +53,7 @@ private:
     }
 
     latencies_.push_back((now() - message->time_stamp).nanoseconds());
-    if (latencies_.size() == config_.number_of_samples)
-      rclcpp::shutdown();
+    if (latencies_.size() == config_.number_of_samples) rclcpp::shutdown();
   }
 
   const utils::Config config_;
@@ -62,10 +62,10 @@ private:
   rclcpp::Subscription<ros2_fast::msg::Payload>::SharedPtr subscriber_;
 };
 
-} // namespace tb
+}  // namespace tb
 
-int main(int argc, char **argv) {
-  if (argc != 3) { // NOTE: First is config, second is instance id
+int main(int argc, char** argv) {
+  if (argc != 3) {  // NOTE: First is config, second is instance id
     std::cerr << __FUNCTION__ << ": " << __LINE__ << std::endl;
     std::abort();
 

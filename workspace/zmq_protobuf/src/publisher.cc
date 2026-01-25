@@ -12,13 +12,14 @@
 namespace tb {
 
 class Publisher {
-public:
+ public:
   Publisher() = delete;
 
   Publisher(utils::Config config, std::string transport_type) noexcept
-      : config_{config}, message_number_{0}, context_{1},
+      : config_{config},
+        message_number_{0},
+        context_{1},
         socket_{context_, zmq::socket_type::pub} {
-
     std::filesystem::remove("/tmp/zmq_benchmark_proto.ipc");
 
     socket_.bind(transport_type == "tcp" ? constants::ZMQ_TCP_ENDPOINT
@@ -40,7 +41,7 @@ public:
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-private:
+ private:
   void tick() noexcept {
     tb_proto::Payload payload;
     payload.set_time_stamp_ns(utils::now());
@@ -55,7 +56,6 @@ private:
 
     if (!payload.SerializeToArray(message.data(),
                                   static_cast<int>(message.size()))) {
-
       std::cerr << __FUNCTION__ << ": " << __LINE__ << std::endl;
       std::abort();
     }
@@ -69,11 +69,10 @@ private:
   zmq::socket_t socket_;
 };
 
-} // namespace tb
+}  // namespace tb
 
-int main(int argc, char **argv) {
-  if (argc != 3)
-    return tb::constants::FAILED_APP_FINISH;
+int main(int argc, char** argv) {
+  if (argc != 3) return tb::constants::FAILED_APP_FINISH;
 
   tb::Publisher publisher{tb::utils::parseConfig(argv[1]), argv[2]};
   publisher.run();

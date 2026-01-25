@@ -1,0 +1,28 @@
+{
+  "name": "Transport Benchmark",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "transport-benchmark",
+  "workspaceFolder": "/root/workspace",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": ["llvm-vs-code-extensions.vscode-clangd"],
+    },
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/root/workspace,type=bind,consistency=cached",
+  ],
+  "containerArgs": [
+    "--ipc=host",
+    "--network=host",
+    "--privileged",
+    "--cap-add=SYS_NICE",
+    "--cap-add=IPC_LOCK",
+    "--cap-add=SYS_PTRACE",
+    "--ulimit",
+    "memlock=-1:-1",
+  ],
+  "runServices": ["transport-benchmark"],
+  "overrideCommand": true,
+}

@@ -1,5 +1,7 @@
 ### How to use
- - `./run-analysis.sh`
+
+- `./run-analysis.sh`
 
 ### Where are results
- - `./csv-and-plots/`
+
+- `./csv-and-plots/`

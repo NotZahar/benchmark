@@ -36,17 +36,17 @@ add_dependencies(${ZMQ_SUBSCRIBER} generate_capnp)
 foreach(TARGET ${ZMQ_PUBLISHER} ${ZMQ_SUBSCRIBER})
     target_include_directories(${TARGET} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CAPNP_GEN_DIR} 
+        ${CAPNP_GEN_DIR}
         ${ZMQ_INCLUDE_DIRS}
         ${CAPNP_INCLUDE_DIRS}
     )
-    
-    target_link_libraries(${TARGET} PRIVATE 
-        ${ZMQ_LIBRARIES} 
+
+    target_link_libraries(${TARGET} PRIVATE
+        ${ZMQ_LIBRARIES}
         yaml-cpp
         ${CAPNP_LIBRARIES}
     )
-    
+
     set(EXTRA_COMPILER_FLAGS -Wall -Wextra -Wconversion -Wshadow -Wpedantic -Werror)
     target_compile_options(${TARGET} PRIVATE ${EXTRA_COMPILER_FLAGS})
 endforeach()

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-import pandas as pd
+import argparse
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
-import argparse
+import pandas as pd
 
 
 def load_and_merge_data(subscriber_csv, publisher_csv):
@@ -98,10 +99,9 @@ def create_publisher_cpu_chart(combined_df, output_dir):
     payload_sizes = sorted(combined_df["payload_size"].unique())
 
     def format_payload(p):
-        if p >= 1048576:
-            return f"{p//1048576}MB"
+            return f"{p // 1048576}MB"
         elif p >= 1024:
-            return f"{p//1024}KB"
+            return f"{p // 1024}KB"
         else:
             return f"{p}B"
 
@@ -153,6 +153,7 @@ def create_publisher_cpu_chart(combined_df, output_dir):
     plt.xticks(x, [format_payload(p) for p in payload_sizes], rotation=45)
 
     from matplotlib.patches import Patch
+
     legend_elements = [Patch(facecolor=color_dict[mw], label=mw) for mw in middlewares]
     plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc="upper left")
 
@@ -174,9 +175,9 @@ def create_subscriber_cpu_chart(combined_df, output_dir):
 
     def format_payload(p):
         if p >= 1048576:
-            return f"{p//1048576}MB"
+            return f"{p // 1048576}MB"
         elif p >= 1024:
-            return f"{p//1024}KB"
+            return f"{p // 1024}KB"
         else:
             return f"{p}B"
 
@@ -239,6 +240,7 @@ def create_subscriber_cpu_chart(combined_df, output_dir):
     plt.xticks(x, [format_payload(p) for p in payload_sizes], rotation=45)
 
     from matplotlib.patches import Patch
+
     legend_elements = [Patch(facecolor=color_dict[mw], label=mw) for mw in middlewares]
     plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc="upper left")
 
@@ -260,9 +262,9 @@ def create_total_cpu_chart(combined_df, output_dir):
 
     def format_payload(p):
         if p >= 1048576:
-            return f"{p//1048576}MB"
+            return f"{p // 1048576}MB"
         elif p >= 1024:
-            return f"{p//1024}KB"
+            return f"{p // 1024}KB"
         else:
             return f"{p}B"
 
@@ -318,6 +320,7 @@ def create_total_cpu_chart(combined_df, output_dir):
     plt.xticks(x, [format_payload(p) for p in payload_sizes], rotation=45)
 
     from matplotlib.patches import Patch
+
     legend_elements = [Patch(facecolor=color_dict[mw], label=mw) for mw in middlewares]
     plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc="upper left")
 
@@ -337,15 +340,12 @@ def main():
     )
     parser.add_argument(
         "subscriber_csv",
-        help="Path to subscriber averages CSV file (e.g., perf_subscribers.csv)"
+        help="Path to subscriber averages CSV file (e.g., perf_subscribers.csv)",
     )
     parser.add_argument(
-        "publisher_csv",
-        help="Path to publisher CSV file (e.g., perf_publishers.csv)"
+        "publisher_csv", help="Path to publisher CSV file (e.g., perf_publishers.csv)"
     )
-    parser.add_argument(
-        "output_dir",
-        help="Directory where plots will be saved"
+    parser.add_argument("output_dir", help="Directory where plots will be saved")
     )
     args = parser.parse_args()
 

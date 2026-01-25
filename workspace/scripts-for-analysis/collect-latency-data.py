@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import argparse
+import csv
 import os
 import re
-import csv
-from pathlib import Path
 import sys
-import argparse
+from pathlib import Path
+
 
 def process_latencies(input_path, output_path):
     data = []
@@ -99,7 +100,9 @@ def process_latencies(input_path, output_path):
         writer.writeheader()
         for row in data:
             # Format floats to 6 decimal places
-            formatted_row = {k: (f"{v:.6f}" if isinstance(v, float) else v) for k, v in row.items()}
+            formatted_row = {
+                k: (f"{v:.6f}" if isinstance(v, float) else v) for k, v in row.items()
+            }
             writer.writerow(formatted_row)
 
     print(f"Created {csv_path} with {len(data)} entries")
@@ -110,12 +113,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process latency measurement data.")
     parser.add_argument(
         "input_path",
-        help="Path to the root directory containing latency measurement data"
+        help="Path to the root directory containing latency measurement data",
     )
     parser.add_argument(
-        "output_path",
-        help="Path to the directory where results will be saved"
+        "output_path", help="Path to the directory where results will be saved"
     )
-    
+
     args = parser.parse_args()
     process_latencies(args.input_path, args.output_path)

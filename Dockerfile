@@ -43,18 +43,14 @@ COPY docker-scripts/10-build-and-install-iceoryx.sh /root/docker-scripts/
 RUN chmod +x /root/docker-scripts/10-build-and-install-iceoryx.sh && \
     /root/docker-scripts/10-build-and-install-iceoryx.sh
 
-COPY docker-scripts/11-build-and-install-iceoryx2.sh /root/docker-scripts/
-RUN chmod +x /root/docker-scripts/11-build-and-install-iceoryx2.sh && \
-    /root/docker-scripts/11-build-and-install-iceoryx2.sh
+COPY docker-scripts/11-setup-iceoryx.sh /root/docker-scripts/
+RUN chmod +x /root/docker-scripts/11-setup-iceoryx.sh && \
+    /root/docker-scripts/11-setup-iceoryx.sh
 
-COPY docker-scripts/12-setup-iceoryx.sh /root/docker-scripts/
-RUN chmod +x /root/docker-scripts/12-setup-iceoryx.sh && \
-    /root/docker-scripts/12-setup-iceoryx.sh
+COPY docker-scripts/12-setup-perf.sh /root/docker-scripts/
+RUN chmod +x /root/docker-scripts/12-setup-perf.sh
 
-COPY docker-scripts/13-setup-perf.sh /root/docker-scripts/
-RUN chmod +x /root/docker-scripts/13-setup-perf.sh
-
-RUN echo "/root/docker-scripts/13-setup-perf.sh" >> /root/.bashrc
+RUN echo "/root/docker-scripts/12-setup-perf.sh" >> /root/.bashrc
 
 WORKDIR /root/workspace
 ENTRYPOINT ["/bin/bash"]

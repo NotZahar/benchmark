@@ -1,14 +1,15 @@
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
 #include <kj/array.h>
 #include <kj/common.h>
 #include <kj/debug.h>
 #include <kj/exception.h>
 #include <kj/io.h>
+
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,14 +22,15 @@
 namespace tb {
 
 class Subscriber {
-public:
+ public:
   Subscriber() = delete;
 
   Subscriber(utils::Config config, int instance_id, std::string transport_type)
-      : config_{config}, transport_type_{std::move(transport_type)},
-        instance_id_{instance_id}, context_{1},
+      : config_{config},
+        transport_type_{std::move(transport_type)},
+        instance_id_{instance_id},
+        context_{1},
         socket_{context_, zmq::socket_type::sub} {
-
     latencies_.reserve(config_.number_of_samples);
 
     socket_.connect(transport_type_ == "tcp" ? constants::ZMQ_TCP_ENDPOINT
@@ -57,32 +59,34 @@ public:
     while (latencies_.size() < config_.number_of_samples) {
       zmq::message_t message;
       const auto result = socket_.recv(message, zmq::recv_flags::none);
-      if (result)
-        tack(message);
+      if (result) tack(message);
     }
   }
 
-private:
-  void tack(const zmq::message_t &message) {
-    auto received_array = kj::arrayPtr(static_cast<const kj::byte*>(message.data()), message.size());
+ private:
+  void tack(const zmq::message_t& message) {
+    auto received_array = kj::arrayPtr(
+        static_cast<const kj::byte*>(message.data()), message.size());
 
     kj::ArrayInputStream input_stream(kj::mv(received_array));
 
     try {
-        capnp::PackedMessageReader message_reader(input_stream);
-        auto payload_reader = message_reader.getRoot<tb_proto::Payload>();
+      capnp::PackedMessageReader message_reader(input_stream);
+      auto payload_reader = message_reader.getRoot<tb_proto::Payload>();
 
-        auto data_reader = payload_reader.getData();
-        if (data_reader.size() == 0 || data_reader[0] != constants::PAYLOAD_DATA_CHUNK) {
-          std::cerr << "Invalid payload data" << std::endl;
-          std::abort();
-        }
-
-        const auto latency_ns = utils::now() - payload_reader.getTimeStampNs();
-        latencies_.push_back(latency_ns);
-    } catch (const kj::Exception& e) {
-        // std::cerr << "Error parsing Cap'n Proto message: " << e.getDescription() << std::endl;
+      auto data_reader = payload_reader.getData();
+      if (data_reader.size() == 0 ||
+          data_reader[0] != constants::PAYLOAD_DATA_CHUNK) {
+        std::cerr << "Invalid payload data" << std::endl;
         std::abort();
+      }
+
+      const auto latency_ns = utils::now() - payload_reader.getTimeStampNs();
+      latencies_.push_back(latency_ns);
+    } catch (const kj::Exception& e) {
+      // std::cerr << "Error parsing Cap'n Proto message: " <<
+      // e.getDescription() << std::endl;
+      std::abort();
     }
   }
 
@@ -94,11 +98,10 @@ private:
   zmq::socket_t socket_;
 };
 
-} // namespace tb
+}  // namespace tb
 
-int main(int argc, char **argv) {
-  if (argc != 4)
-    return tb::constants::FAILED_APP_FINISH;
+int main(int argc, char** argv) {
+  if (argc != 4) return tb::constants::FAILED_APP_FINISH;
 
   tb::Subscriber subscriber{tb::utils::parseConfig(argv[1]), std::stoi(argv[2]),
                             argv[3]};
