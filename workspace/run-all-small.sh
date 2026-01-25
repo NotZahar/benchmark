@@ -23,3 +23,6 @@ sleep 10
 sleep 10
 ./run-zmq-capnproto.sh --with-ipc --config 20hz_10_samples --num-subscribers 3
 sleep 10
+
+./run-rust-iceoryx2.sh --config 20hz_10_samples --num-subscribers 3
+sleep 10
