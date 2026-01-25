@@ -46,11 +46,11 @@ fn main() -> anyhow::Result<()> {
 
         let timestamp = utils::now();
         let timestamp_bytes = timestamp.to_le_bytes();
-        local_buffer[0..8].copy_from_slice(&timestamp_bytes); // 8 → 8 bytes
+        local_buffer[0..8].copy_from_slice(&timestamp_bytes);
 
-        let msg_number_u32 = message_number as u32; // Cast to 32-bit integer
-        let msg_bytes = msg_number_u32.to_le_bytes(); // This will be 4 bytes
-        local_buffer[8..12].copy_from_slice(&msg_bytes); // 4 → 4 bytes
+        let msg_number_u32 = message_number as u32;
+        let msg_bytes = msg_number_u32.to_le_bytes();
+        local_buffer[8..12].copy_from_slice(&msg_bytes);
 
         let mut sample = publisher.loan_slice_uninit(total_size)?;
         let payload = sample.payload_mut();
