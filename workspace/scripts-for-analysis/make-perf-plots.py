@@ -99,6 +99,7 @@ def create_publisher_cpu_chart(combined_df, output_dir):
     payload_sizes = sorted(combined_df["payload_size"].unique())
 
     def format_payload(p):
+        if p >= 1048576:  # 1 MiB = 1024 * 1024 bytes
             return f"{p // 1048576}MB"
         elif p >= 1024:
             return f"{p // 1024}KB"
@@ -346,7 +347,6 @@ def main():
         "publisher_csv", help="Path to publisher CSV file (e.g., perf_publishers.csv)"
     )
     parser.add_argument("output_dir", help="Directory where plots will be saved")
-    )
     args = parser.parse_args()
 
     subscriber_path = Path(args.subscriber_csv)
