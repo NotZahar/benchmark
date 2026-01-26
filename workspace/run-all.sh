@@ -26,3 +26,5 @@ sleep 10
 
 ./run-rust-iceoryx2.sh --config 20hz_10000_samples --num-subscribers 3
 sleep 10
+./run-rust-iceoryx2-flatbuffers.sh --config 20hz_10000_samples --num-subscribers 3
+sleep 10

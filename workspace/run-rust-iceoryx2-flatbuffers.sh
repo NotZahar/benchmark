@@ -157,4 +157,4 @@ kill -TERM "$IOX_DAEMON_PID" 2> /dev/null || true
 sleep 1
 kill -KILL "$IOX_DAEMON_PID" 2> /dev/null || true
 
-echo "All FlatBuffers benchmarks completed!"
+echo "All benchmarks completed!"

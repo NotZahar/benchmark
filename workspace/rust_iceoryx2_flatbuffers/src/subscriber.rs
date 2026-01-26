@@ -40,14 +40,16 @@ fn main() -> anyhow::Result<()> {
             let sample_slice = sample.payload();
 
             let aligned_buffer: Vec<u8> = sample_slice.to_vec();
-            let payload = flatbuffers::root::<Payload>(&aligned_buffer)
-                       .map_err(|e| anyhow::anyhow!("FlatBuffer parse error: {:?}", e))?;
+
+            let payload = flatbuffers::size_prefixed_root::<Payload>(&aligned_buffer)
+                .map_err(|e| anyhow::anyhow!("FlatBuffer parse error: {:?}", e))?;
 
             let timestamp = payload.timestamp();
             let seq_num = payload.message_number();
             let data_option = payload.payload();
 
             if let Some(data_vec) = data_option {
+                let data_vec: flatbuffers::Vector<u8> = data_vec;
                 let data_slice: &[u8] = data_vec.bytes();
 
                 if data_slice.len() != config.payload_size_bytes {
