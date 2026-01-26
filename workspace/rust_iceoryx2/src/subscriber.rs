@@ -1,8 +1,9 @@
+use iceoryx2::prelude::*;
 use std::fs;
 use std::path::Path;
-
-use iceoryx2::prelude::*;
 use rust_iceoryx2::{Config, PAYLOAD_DATA_CHUNK, utils, RESULTS_FILE_PATH};
+use std::time::Duration;
+use std::thread;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -21,9 +22,7 @@ fn main() -> anyhow::Result<()> {
         .name(&node_name)
         .create::<ipc::Service>()?;
 
-    let service_name_str = "BenchmarkService_Shared";
-    let service_name: ServiceName = service_name_str.try_into()?;
-
+    let service_name: ServiceName = "BenchmarkService_Shared".try_into()?;
     let service = node
         .service_builder(&service_name)
         .publish_subscribe::<[u8]>()
@@ -62,6 +61,8 @@ fn main() -> anyhow::Result<()> {
 
             let latency = now - timestamp;
             latencies.push(latency);
+        } else {
+            thread::sleep(Duration::from_micros(2));
         }
     }
 
