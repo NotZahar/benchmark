@@ -1,0 +1,9 @@
+namespace rust_iceoryx2_flatbuffers;
+
+table Payload {
+  timestamp: long;
+  message_number: uint;
+  payload: [ubyte];
+}
+
+root_type Payload;

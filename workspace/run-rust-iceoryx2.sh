@@ -81,6 +81,7 @@ IOX_DAEMON_PID=$!
 sleep 1
 
 echo "Building Rust project..."
+cargo clean
 cargo build --release
 
 echo ""

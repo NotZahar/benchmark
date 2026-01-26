@@ -1,0 +1,30 @@
+[package]
+name = "rust_iceoryx2_flatbuffers"
+build = "build.rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "rust_iceoryx2_flatbuffers"
+path = "src/lib.rs"
+
+[[bin]]
+name = "publisher"
+path = "src/publisher.rs"
+
+[[bin]]
+name = "subscriber"
+path = "src/subscriber.rs"
+
+[build-dependencies]
+flatc-rust = "0.2.0"
+
+[dependencies]
+anyhow = "1.0.100"
+ctrlc = "3.5.1"
+env_logger = "0.11.8"
+flatbuffers = "25.12.19"
+iceoryx2 = "0.8.1"
+log = "0.4.29"
+serde = "1.0.228"
+serde_yaml = "0.9.34"
