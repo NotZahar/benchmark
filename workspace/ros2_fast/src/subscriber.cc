@@ -1,10 +1,11 @@
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <utility>
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/byte_multi_array.hpp>
 
 #include "ros2_fast/constants.hh"
 #include "ros2_fast/msg/payload.hpp"
@@ -24,13 +25,14 @@ class Subscriber final : public rclcpp::Node {
     subscriber_ = create_subscription<ros2_fast::msg::Payload>(
         constants::BENCHMARK_TOPIC, constants::BENCHMARK_QOS,
         [this](ros2_fast::msg::Payload::ConstSharedPtr message) {
-          tack(std::move(message));
+          const auto received_at = now();
+          tack(std::move(message), received_at);
         });
   }
 
   ~Subscriber() {
     const auto result_folder =
-        std::string{constants::RESULTS_FILE_PATH} + "/" +
+        utils::latencyResultsPath(constants::RESULTS_FILE_PATH) + "/" +
         std::to_string(config_.payload_size_bytes) + "_bytes_" +
         std::to_string(config_.publish_period_ms) + "_ms_" +
         std::to_string(config_.number_of_samples) + "_samples";
@@ -45,14 +47,9 @@ class Subscriber final : public rclcpp::Node {
   }
 
  private:
-  void tack(ros2_fast::msg::Payload::ConstSharedPtr message) noexcept {
-    if (message->data.empty() ||
-        message->data[0] != constants::PAYLOAD_DATA_CHUNK) {
-      std::cerr << __FUNCTION__ << ": " << __LINE__ << std::endl;
-      std::abort();
-    }
-
-    latencies_.push_back((now() - message->time_stamp).nanoseconds());
+  void tack(ros2_fast::msg::Payload::ConstSharedPtr message,
+            const rclcpp::Time& received_at) noexcept {
+    latencies_.push_back((received_at - message->time_stamp).nanoseconds());
     if (latencies_.size() == config_.number_of_samples) rclcpp::shutdown();
   }
 

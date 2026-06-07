@@ -1,2 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local editors and environments
+.DS_Store
+.idea/
+.vscode/
+.venv/
+venv/
+
+# C/C++ and CMake
 build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.o
+*.a
+*.so
+
+# ROS/colcon
+install/
+log/
+workspace/**/build/
+workspace/**/install/
+workspace/**/log/
+
+# Rust
+target/
+workspace/**/target/
+
+# Benchmark runtime/output artifacts
 tmp/
+workspace/tmp/
+workspace/**/perf_data/
+workspace/**/latencies/
+*.stat.txt
+*.log
+
+# Analysis outputs
+workspace/scripts-for-analysis/csv-and-plots/
+workspace/scripts-for-analysis/**/*.csv
+workspace/scripts-for-analysis/**/*.png

@@ -27,11 +27,12 @@ public:
 
 private:
   void tick() noexcept {
+    const auto timestamp = now();
     ros2_cyclone::msg::Payload message;
     message.data.resize(config_.payload_size_bytes,
                         constants::PAYLOAD_DATA_CHUNK);
     message.message_number = message_number_++;
-    message.time_stamp = now();
+    message.time_stamp = timestamp;
 
     publisher_->publish(std::move(message));
   }

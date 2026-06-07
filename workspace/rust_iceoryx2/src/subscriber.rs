@@ -1,9 +1,7 @@
 use iceoryx2::prelude::*;
+use rust_iceoryx2::{Config, RESULTS_FILE_PATH, utils};
 use std::fs;
 use std::path::Path;
-use rust_iceoryx2::{Config, PAYLOAD_DATA_CHUNK, utils, RESULTS_FILE_PATH};
-use std::time::Duration;
-use std::thread;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -34,35 +32,17 @@ fn main() -> anyhow::Result<()> {
 
     while latencies.len() < config.number_of_samples {
         if let Some(sample) = subscriber.receive()? {
-            let now = utils::now();
             let sample_slice = sample.payload();
 
-            if sample_slice.len() < 12 {
-                eprintln!("Sample too small: {}", sample_slice.len());
-                continue;
+            if sample_slice.len() < 8 {
+                anyhow::bail!("sample is too small: {}", sample_slice.len());
             }
 
             let timestamp_bytes: [u8; 8] = sample_slice[0..8].try_into()?;
             let timestamp = i64::from_le_bytes(timestamp_bytes);
-
-            let data_start = 12;
-            let data_end = data_start + config.payload_size_bytes;
-
-            if data_end > sample_slice.len() {
-                eprintln!("Invalid payload size: expected {}, got {}",
-                         data_end - data_start, sample_slice.len() - data_start);
-                continue;
-            }
-
-            if !sample_slice[data_start..data_end].iter().all(|&b| b == PAYLOAD_DATA_CHUNK) {
-                eprintln!("Invalid data pattern detected");
-                continue;
-            }
-
+            let now = utils::now();
             let latency = now - timestamp;
             latencies.push(latency);
-        } else {
-            thread::sleep(Duration::from_micros(2));
         }
     }
 

@@ -43,13 +43,14 @@ class Publisher {
 
  private:
   void tick() noexcept {
+    const auto timestamp = utils::now();
     tb_proto::Payload payload;
-    payload.set_time_stamp_ns(utils::now());
-    payload.set_message_number(message_number_++);
 
     std::string data(config_.payload_size_bytes,
                      static_cast<char>(constants::PAYLOAD_DATA_CHUNK));
     payload.mutable_data()->assign(data.data(), data.size());
+    payload.set_message_number(message_number_++);
+    payload.set_time_stamp_ns(timestamp);
 
     const auto size = payload.ByteSizeLong();
     zmq::message_t message(size);

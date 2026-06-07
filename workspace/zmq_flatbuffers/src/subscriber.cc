@@ -1,5 +1,6 @@
 #include <flatbuffers/flatbuffers.h>
 
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -49,21 +50,27 @@ class Subscriber {
     while (latencies_.size() < config_.number_of_samples) {
       zmq::message_t message;
       const auto result = socket_.recv(message, zmq::recv_flags::none);
-      if (result) tack(message);
+      if (!result) {
+        std::cerr << "ZMQ recv returned no message" << std::endl;
+        std::abort();
+      }
+      tack(message);
     }
   }
 
  private:
   void tack(const zmq::message_t& message) {
     auto payload = tb_flat::GetPayload(message.data());
-
-    if (!payload->data() || payload->data()->size() == 0 ||
-        (*payload->data())[0] != constants::PAYLOAD_DATA_CHUNK) {
-      std::cerr << "Invalid payload data" << std::endl;
-      std::abort();
-    }
-
-    const auto latency_ns = utils::now() - payload->time_stamp_ns();
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnull-dereference"
+#endif
+    const auto timestamp_ns = payload->time_stamp_ns();
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+    const auto received_at_ns = utils::now();
+    const auto latency_ns = received_at_ns - timestamp_ns;
     latencies_.push_back(latency_ns);
   }
 

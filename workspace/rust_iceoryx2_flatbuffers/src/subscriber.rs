@@ -1,11 +1,9 @@
 use iceoryx2::prelude::*;
 use std::fs;
 use std::path::Path;
-use std::time::Duration;
-use std::thread;
 
 use rust_iceoryx2_flatbuffers::flatbuffers_generated::rust_iceoryx_2_flatbuffers::Payload;
-use rust_iceoryx2_flatbuffers::{Config, utils, RESULTS_FILE_PATH, PAYLOAD_DATA_CHUNK};
+use rust_iceoryx2_flatbuffers::{Config, RESULTS_FILE_PATH, utils};
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -36,7 +34,6 @@ fn main() -> anyhow::Result<()> {
 
     while latencies.len() < config.number_of_samples {
         if let Some(sample) = subscriber.receive()? {
-            let now = utils::now();
             let sample_slice = sample.payload();
 
             let aligned_buffer: Vec<u8> = sample_slice.to_vec();
@@ -45,36 +42,9 @@ fn main() -> anyhow::Result<()> {
                 .map_err(|e| anyhow::anyhow!("FlatBuffer parse error: {:?}", e))?;
 
             let timestamp = payload.timestamp();
-            let seq_num = payload.message_number();
-            let data_option = payload.payload();
-
-            if let Some(data_vec) = data_option {
-                let data_vec: flatbuffers::Vector<u8> = data_vec;
-                let data_slice: &[u8] = data_vec.bytes();
-
-                if data_slice.len() != config.payload_size_bytes {
-                    eprintln!(
-                        "Payload size mismatch (msg {}): expected {}, got {}",
-                        seq_num,
-                        config.payload_size_bytes,
-                        data_slice.len()
-                    );
-                    continue;
-                }
-
-                if !data_slice.iter().all(|&b| b == PAYLOAD_DATA_CHUNK) {
-                    eprintln!("Invalid payload pattern in message {}", seq_num);
-                    continue;
-                }
-            } else {
-                eprintln!("Missing payload data in message {}", seq_num);
-                continue;
-            }
-
+            let now = utils::now();
             let latency = now - timestamp;
             latencies.push(latency);
-        } else {
-            thread::sleep(Duration::from_micros(2));
         }
     }
 

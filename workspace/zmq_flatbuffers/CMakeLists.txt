@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project("zmq_flatbuffers")
 set(ZMQ_PUBLISHER "${PROJECT_NAME}_publisher")
 set(ZMQ_SUBSCRIBER "${PROJECT_NAME}_subscriber")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/CompilerWarnings.cmake")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,6 +38,5 @@ target_include_directories(
 target_link_libraries(${ZMQ_PUBLISHER} PUBLIC ${ZMQ_LIBRARIES} yaml-cpp)
 target_link_libraries(${ZMQ_SUBSCRIBER} PUBLIC ${ZMQ_LIBRARIES} yaml-cpp)
 
-set(EXTRA_COMPILER_FLAGS -Wall -Wextra -Wconversion -Wshadow -Wpedantic -Werror)
-target_compile_options(${ZMQ_PUBLISHER} PRIVATE ${EXTRA_COMPILER_FLAGS})
-target_compile_options(${ZMQ_SUBSCRIBER} PRIVATE ${EXTRA_COMPILER_FLAGS})
+target_enable_benchmark_warnings(${ZMQ_PUBLISHER})
+target_enable_benchmark_warnings(${ZMQ_SUBSCRIBER})

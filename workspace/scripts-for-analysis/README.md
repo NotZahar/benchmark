@@ -1,7 +1,21 @@
-### How to use
+# Анализ результатов
 
-- `./run-analysis.sh`
+Анализ запускать только внутри контейнера.
 
-### Where are results
+```zsh
+./run-analysis.py /root/workspace/tmp /root/workspace/scripts-for-analysis/csv-and-plots
+```
 
-- `./csv-and-plots/`
+Результаты анализа пишутся в выбранный output-каталог, например:
+
+```text
+csv-and-plots/
+```
+
+После контейнерного запуска можно вернуть владельца файлов на host-пользователя:
+
+```zsh
+./fix-host-ownership.sh
+```
+
+Этот скрипт запускать на host, не внутри контейнера.

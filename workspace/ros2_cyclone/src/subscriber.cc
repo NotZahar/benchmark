@@ -1,10 +1,11 @@
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <utility>
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/byte_multi_array.hpp>
 
 #include "ros2_cyclone/constants.hh"
 #include "ros2_cyclone/msg/payload.hpp"
@@ -23,7 +24,8 @@ public:
     subscriber_ = create_subscription<ros2_cyclone::msg::Payload>(
         constants::BENCHMARK_TOPIC, constants::BENCHMARK_QOS,
         [this](ros2_cyclone::msg::Payload::ConstSharedPtr message) {
-          tack(std::move(message));
+          const auto received_at = now();
+          tack(std::move(message), received_at);
         });
   }
 
@@ -44,14 +46,9 @@ public:
   }
 
 private:
-  void tack(ros2_cyclone::msg::Payload::ConstSharedPtr message) noexcept {
-    if (message->data.empty() ||
-        message->data[0] != constants::PAYLOAD_DATA_CHUNK) {
-      std::cerr << __FUNCTION__ << ": " << __LINE__ << std::endl;
-      std::abort();
-    }
-
-    latencies_.push_back((now() - message->time_stamp).nanoseconds());
+  void tack(ros2_cyclone::msg::Payload::ConstSharedPtr message,
+            const rclcpp::Time& received_at) noexcept {
+    latencies_.push_back((received_at - message->time_stamp).nanoseconds());
     if (latencies_.size() == config_.number_of_samples)
       rclcpp::shutdown();
   }

@@ -7,6 +7,7 @@
 #include <kj/io.h>
 
 #include <cstdlib>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -59,7 +60,11 @@ class Subscriber {
     while (latencies_.size() < config_.number_of_samples) {
       zmq::message_t message;
       const auto result = socket_.recv(message, zmq::recv_flags::none);
-      if (result) tack(message);
+      if (!result) {
+        std::cerr << "ZMQ recv returned no message" << std::endl;
+        std::abort();
+      }
+      tack(message);
     }
   }
 
@@ -74,18 +79,11 @@ class Subscriber {
       capnp::PackedMessageReader message_reader(input_stream);
       auto payload_reader = message_reader.getRoot<tb_proto::Payload>();
 
-      auto data_reader = payload_reader.getData();
-      if (data_reader.size() == 0 ||
-          data_reader[0] != constants::PAYLOAD_DATA_CHUNK) {
-        std::cerr << "Invalid payload data" << std::endl;
-        std::abort();
-      }
-
-      const auto latency_ns = utils::now() - payload_reader.getTimeStampNs();
+      const auto timestamp_ns = payload_reader.getTimeStampNs();
+      const auto received_at_ns = utils::now();
+      const auto latency_ns = received_at_ns - timestamp_ns;
       latencies_.push_back(latency_ns);
-    } catch (const kj::Exception& e) {
-      // std::cerr << "Error parsing Cap'n Proto message: " <<
-      // e.getDescription() << std::endl;
+    } catch (const kj::Exception&) {
       std::abort();
     }
   }

@@ -1,0 +1,7 @@
+.git
+workspace/tmp
+workspace/**/build
+workspace/**/install
+workspace/**/log
+workspace/**/target
+workspace/**/Cargo.lock

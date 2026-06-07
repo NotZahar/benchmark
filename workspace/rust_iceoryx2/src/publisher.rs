@@ -1,7 +1,7 @@
-use std::time::{Duration, SystemTime};
-use std::thread;
-use std::path::Path;
 use std::mem::MaybeUninit;
+use std::path::Path;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use iceoryx2::prelude::*;
 use rust_iceoryx2::{Config, PAYLOAD_DATA_CHUNK, utils};
@@ -39,24 +39,21 @@ fn main() -> anyhow::Result<()> {
     let period = Duration::from_millis(config.publish_period_ms as u64);
 
     while message_number < config.number_of_samples {
-        let next_wake = SystemTime::now() + period;
-
-        let total_size = config.payload_size_bytes + 12;
-        let mut local_buffer = vec![PAYLOAD_DATA_CHUNK; total_size];
+        let next_wake = Instant::now() + period;
 
         let timestamp = utils::now();
-        let timestamp_bytes = timestamp.to_le_bytes();
-        local_buffer[0..8].copy_from_slice(&timestamp_bytes);
-
-        let msg_number_u32 = message_number as u32;
-        let msg_bytes = msg_number_u32.to_le_bytes();
-        local_buffer[8..12].copy_from_slice(&msg_bytes);
-
+        let total_size = config.payload_size_bytes + 12;
         let mut sample = publisher.loan_slice_uninit(total_size)?;
         let payload = sample.payload_mut();
 
-        for (i, &byte) in local_buffer.iter().enumerate() {
-            payload[i] = MaybeUninit::new(byte);
+        for byte in payload.iter_mut() {
+            *byte = MaybeUninit::new(PAYLOAD_DATA_CHUNK);
+        }
+        for (index, byte) in (message_number as u32).to_le_bytes().iter().enumerate() {
+            payload[8 + index] = MaybeUninit::new(*byte);
+        }
+        for (index, byte) in timestamp.to_le_bytes().iter().enumerate() {
+            payload[index] = MaybeUninit::new(*byte);
         }
 
         let initialized_sample = unsafe { sample.assume_init() };
@@ -64,8 +61,9 @@ fn main() -> anyhow::Result<()> {
 
         message_number += 1;
 
-        if next_wake > SystemTime::now() {
-            thread::sleep(next_wake.duration_since(SystemTime::now())?);
+        let now = Instant::now();
+        if next_wake > now {
+            thread::sleep(next_wake.duration_since(now));
         }
     }
 

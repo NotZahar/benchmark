@@ -42,13 +42,14 @@ class Publisher {
 
  private:
   void tick() noexcept {
+    const auto timestamp = utils::now();
     builder_.Clear();
 
     std::vector<uint8_t> data(config_.payload_size_bytes,
                               constants::PAYLOAD_DATA_CHUNK);
 
-    builder_.Finish(tb_flat::CreatePayload(builder_, utils::now(),
-                                           builder_.CreateVector(data),
+    const auto data_vector = builder_.CreateVector(data);
+    builder_.Finish(tb_flat::CreatePayload(builder_, timestamp, data_vector,
                                            message_number_++));
 
     zmq::message_t message(builder_.GetBufferPointer(), builder_.GetSize());

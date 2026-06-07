@@ -11,83 +11,66 @@ import pandas as pd
 def load_and_merge_data(subscriber_csv, publisher_csv):
     """Load and merge subscriber and publisher data."""
 
-    # Load subscriber data
     subscriber_df = pd.read_csv(subscriber_csv)
-
-    # Load publisher data
     publisher_df = pd.read_csv(publisher_csv)
 
-    # Create a combined dataframe
     combined_data = []
+    key_columns = ["middleware", "payload_size", "hz"]
 
-    # Get all unique configurations
-    all_middlewares = set(subscriber_df["middleware"].unique()) | set(
-        publisher_df["middleware"].unique()
+    subscriber_keys = set(
+        map(tuple, subscriber_df[key_columns].drop_duplicates().values)
     )
-    all_payloads = set(subscriber_df["payload_size"].unique()) | set(
-        publisher_df["payload_size"].unique()
+    publisher_keys = set(
+        map(tuple, publisher_df[key_columns].drop_duplicates().values)
     )
 
-    # Process each configuration
-    for mw in sorted(all_middlewares):
-        # Get subscriber data for this middleware
-        sub_mw_data = subscriber_df[subscriber_df["middleware"] == mw]
+    for mw, payload, hz in sorted(subscriber_keys | publisher_keys):
+        sub_data = subscriber_df[
+            (subscriber_df["middleware"] == mw)
+            & (subscriber_df["payload_size"] == payload)
+            & (subscriber_df["hz"] == hz)
+        ]
+        pub_data = publisher_df[
+            (publisher_df["middleware"] == mw)
+            & (publisher_df["payload_size"] == payload)
+            & (publisher_df["hz"] == hz)
+        ]
 
-        # Get publisher data for this middleware
-        pub_mw_data = publisher_df[publisher_df["middleware"] == mw]
+        row = {"middleware": mw, "payload_size": payload, "hz": hz}
 
-        # Process each payload size
-        for payload in sorted(all_payloads):
-            # Get subscriber data for this payload
-            sub_data = sub_mw_data[sub_mw_data["payload_size"] == payload]
+        if not sub_data.empty:
+            row["subscriber_cpu_utilized"] = sub_data.iloc[0].get(
+                "avg_cpu_utilized", 0
+            ) * 100
+            row["num_subscribers"] = int(sub_data.iloc[0].get("num_subscribers", 0))
+        else:
+            row["subscriber_cpu_utilized"] = 0
+            row["num_subscribers"] = 0
 
-            # Get publisher data for this payload
-            pub_data = pub_mw_data[pub_mw_data["payload_size"] == payload]
+        if not pub_data.empty:
+            row["publisher_cpu_utilized"] = (
+                pub_data.iloc[0].get("cpu_utilized", 0) * 100
+            )
+        else:
+            row["publisher_cpu_utilized"] = 0
 
-            if not sub_data.empty or not pub_data.empty:
-                row = {
-                    "middleware": mw,
-                    "payload_size": payload,
-                    "hz": 20.0,  # All are 20Hz
-                }
+        row["total_cpu_utilized"] = row["publisher_cpu_utilized"] + (
+            row["subscriber_cpu_utilized"] * row["num_subscribers"]
+        )
 
-                # Add subscriber data if available
-                if not sub_data.empty:
-                    row["subscriber_cpu_utilized"] = (
-                        sub_data.iloc[0]["avg_cpu_utilized"] * 100
-                    )  # Convert to percentage
-                    row["num_subscribers"] = sub_data.iloc[0]["num_subscribers"]
-                else:
-                    row["subscriber_cpu_utilized"] = 0
-                    row["num_subscribers"] = 0
+        if row["publisher_cpu_utilized"] > 0:
+            row["sub_pub_ratio"] = (
+                row["subscriber_cpu_utilized"] / row["publisher_cpu_utilized"]
+            )
+        else:
+            row["sub_pub_ratio"] = 0
 
-                # Add publisher data if available
-                if not pub_data.empty:
-                    row["publisher_cpu_utilized"] = (
-                        pub_data.iloc[0]["cpu_utilized"] * 100
-                    )  # Convert to percentage
-                else:
-                    row["publisher_cpu_utilized"] = 0
-
-                # Calculate total CPU utilization (publisher + sum of subscribers)
-                row["total_cpu_utilized"] = row["publisher_cpu_utilized"] + (
-                    row["subscriber_cpu_utilized"] * row["num_subscribers"]
-                )
-
-                # Calculate ratio (subscriber/publisher)
-                if row["publisher_cpu_utilized"] > 0:
-                    row["sub_pub_ratio"] = (
-                        row["subscriber_cpu_utilized"] / row["publisher_cpu_utilized"]
-                    )
-                else:
-                    row["sub_pub_ratio"] = 0
-
-                combined_data.append(row)
+        combined_data.append(row)
 
     combined_df = pd.DataFrame(combined_data)
-
-    # Sort the dataframe
-    combined_df.sort_values(["middleware", "payload_size"], inplace=True)
+    if combined_df.empty:
+        return combined_df
+    combined_df.sort_values(["middleware", "payload_size", "hz"], inplace=True)
 
     return combined_df
 
@@ -307,9 +290,17 @@ def create_total_cpu_chart(combined_df, output_dir):
                     fontsize=8,
                 )
 
+    subscriber_counts = sorted(
+        {int(value) for value in combined_df["num_subscribers"].dropna().unique()}
+    )
+    if len(subscriber_counts) == 1:
+        subscriber_label = f"{subscriber_counts[0]} Subscribers"
+    else:
+        subscriber_label = "Subscribers"
+
     plt.xlabel("Payload Size", fontsize=12, fontweight="bold")
     plt.ylabel(
-        "Total CPU Utilization (%)\n(Publisher + 3 Subscribers)",
+        f"Total CPU Utilization (%)\n(Publisher + {subscriber_label})",
         fontsize=12,
         fontweight="bold",
     )
@@ -365,6 +356,9 @@ def main():
 
     print("Loading and processing data...")
     combined_df = load_and_merge_data(subscriber_path, publisher_path)
+    if combined_df.empty:
+        print("No performance data found.")
+        return
 
     print(f"\nData loaded:")
     print(f"- Middlewares: {len(combined_df['middleware'].unique())}")

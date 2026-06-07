@@ -1,6 +1,6 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use anyhow::Result;
 
 pub const PAYLOAD_DATA_CHUNK: u8 = 0xFF;
 pub const RESULTS_FILE_PATH: &str = "/root/workspace/tmp/rust_iceoryx2";
@@ -22,13 +22,16 @@ impl Config {
 
 pub mod utils {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     pub fn now() -> i64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos() as i64
+        let mut ts = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        let result = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
+        assert_eq!(result, 0, "clock_gettime(CLOCK_MONOTONIC) failed");
+
+        (ts.tv_sec as i64) * 1_000_000_000 + (ts.tv_nsec as i64)
     }
 
     pub fn elapsed(t1: i64, t2: i64) -> i64 {
@@ -50,7 +53,8 @@ pub mod utils {
         if latencies.len() % 2 == 1 {
             latencies[latencies.len() / 2] as f64
         } else {
-            (latencies[latencies.len() / 2 - 1] as f64 + latencies[latencies.len() / 2] as f64) / 2.0
+            (latencies[latencies.len() / 2 - 1] as f64 + latencies[latencies.len() / 2] as f64)
+                / 2.0
         }
     }
 

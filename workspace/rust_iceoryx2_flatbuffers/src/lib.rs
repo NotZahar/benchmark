@@ -1,12 +1,15 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use anyhow::Result;
 
 pub const PAYLOAD_DATA_CHUNK: u8 = 0xFF;
 pub const RESULTS_FILE_PATH: &str = "/root/workspace/tmp/rust_iceoryx2_flatbuffers";
 
 pub mod flatbuffers_generated {
-    include!(concat!(env!("OUT_DIR"), "/rust_iceoryx2_flatbuffers_payload.rs"));
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/rust_iceoryx2_flatbuffers_payload.rs"
+    ));
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -22,9 +25,15 @@ pub struct Config {
     pub topic_name: String,
 }
 
-fn default_enable_logging() -> bool { true }
-fn default_publisher_node_name() -> String { "benchmark_publisher_flatbuffers".to_string() }
-fn default_topic_name() -> String { "BenchmarkService_FlatBuffers".to_string() }
+fn default_enable_logging() -> bool {
+    false
+}
+fn default_publisher_node_name() -> String {
+    "benchmark_publisher_flatbuffers".to_string()
+}
+fn default_topic_name() -> String {
+    "BenchmarkService_FlatBuffers".to_string()
+}
 
 impl Config {
     pub fn from_file(path: &Path) -> Result<Self> {
@@ -48,13 +57,16 @@ impl Config {
 
 pub mod utils {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     pub fn now() -> i64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos() as i64
+        let mut ts = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        let result = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
+        assert_eq!(result, 0, "clock_gettime(CLOCK_MONOTONIC) failed");
+
+        (ts.tv_sec as i64) * 1_000_000_000 + (ts.tv_nsec as i64)
     }
 
     pub fn now_ns() -> i64 {

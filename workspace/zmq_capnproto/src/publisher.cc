@@ -54,22 +54,21 @@ class Publisher {
 
  private:
   void tick() noexcept {
+    const auto timestamp = utils::now();
     capnp::MallocMessageBuilder message_builder;
 
-    std::vector<uint8_t> payload_data_vec(
-        payload_size_, static_cast<uint8_t>(constants::PAYLOAD_DATA_CHUNK));
+    std::vector<uint8_t> payload_data_vec(payload_size_,
+                                          constants::PAYLOAD_DATA_CHUNK);
 
     auto payload_builder = message_builder.initRoot<tb_proto::Payload>();
-
-    auto timestamp = utils::now();
     auto msg_num = message_number_++;
 
-    payload_builder.setTimeStampNs(timestamp);
     payload_builder.setMessageNumber(msg_num);
 
     kj::ArrayPtr<const uint8_t> data_array_ptr(payload_data_vec.data(),
                                                payload_size_);
     payload_builder.setData(data_array_ptr);
+    payload_builder.setTimeStampNs(timestamp);
 
     kj::VectorOutputStream raw_output_stream;
     capnp::writePackedMessage(raw_output_stream, message_builder);

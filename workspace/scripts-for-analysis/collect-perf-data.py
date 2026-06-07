@@ -13,7 +13,7 @@ def parse_perf_file(file_path):
     metrics = {}
 
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
             # Key metrics to extract
@@ -52,9 +52,8 @@ def collect_perf_data(input_root):
     subscriber_grouped_data = defaultdict(list)
     publisher_data = defaultdict(list)
 
-    # Walk through directory structure starting from input_root
     for root, dirs, files in os.walk(input_root):
-        if not root.endswith("perf_data"):
+        if Path(root).name != "perf_data":
             continue
 
         middleware = Path(root).parent.name
@@ -70,7 +69,7 @@ def collect_perf_data(input_root):
 
             subdir_path = Path(root) / subdir
 
-            for file in os.listdir(subdir_path):
+            for file in sorted(os.listdir(subdir_path)):
                 if file.endswith(".stat.txt"):
                     file_path = subdir_path / file
                     metrics = parse_perf_file(file_path)
@@ -197,7 +196,7 @@ def write_csv(data, output_path, filename):
     fieldnames = base_cols + metric_cols
 
     full_path = Path(output_path) / filename
-    with open(full_path, "w", newline="") as csvfile:
+    with open(full_path, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for row in data:
@@ -237,17 +236,12 @@ def main():
     print("Processing publisher data...")
     publisher_data = process_publisher_data(publisher_grouped_data)
 
-    if not subscriber_averages:
-        print("No subscriber data found!")
-        return
-
     print(f"\nSummary:")
     print(f"- Subscriber configurations: {len(subscriber_averages)}")
     print(f"- Publisher configurations: {len(publisher_data)}")
-    print(f"- Middlewares: {sorted(set(d['middleware'] for d in subscriber_averages))}")
-    print(
-        f"- Payload sizes: {sorted(set(d['payload_size'] for d in subscriber_averages))}"
-    )
+    all_rows = [*subscriber_averages, *publisher_data]
+    print(f"- Middlewares: {sorted(set(d['middleware'] for d in all_rows))}")
+    print(f"- Payload sizes: {sorted(set(d['payload_size'] for d in all_rows))}")
 
     print("\nCreating separate CSVs...")
     write_csv(subscriber_averages, output_dir, "perf_subscribers.csv")

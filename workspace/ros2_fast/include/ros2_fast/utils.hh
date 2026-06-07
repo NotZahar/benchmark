@@ -3,6 +3,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -110,6 +111,16 @@ using TimePointType = decltype(std::chrono::steady_clock::now());
   result += "P99 latency: " + std::to_string(p99) + " ns\n";
 
   return result;
+}
+
+[[nodiscard]] inline std::string latencyResultsPath(
+    const char* default_path) noexcept {
+  if (const auto* path = std::getenv("TRANSPORT_BENCHMARK_LATENCIES_DIR");
+      path != nullptr && path[0] != '\0') {
+    return path;
+  }
+
+  return default_path;
 }
 
 [[nodiscard]] inline TimePointType now() noexcept {

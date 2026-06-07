@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project("zmq_capnproto")
 set(ZMQ_PUBLISHER "${PROJECT_NAME}_publisher")
 set(ZMQ_SUBSCRIBER "${PROJECT_NAME}_subscriber")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/CompilerWarnings.cmake")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,6 +25,7 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/proto/Payload.capnp
     COMMENT "Generating Cap'n Proto C++ code"
 )
+set_source_files_properties(${CAPNP_SRC} PROPERTIES COMPILE_OPTIONS -w)
 
 add_custom_target(generate_capnp ALL DEPENDS ${CAPNP_HDR} ${CAPNP_SRC})
 
@@ -47,6 +49,5 @@ foreach(TARGET ${ZMQ_PUBLISHER} ${ZMQ_SUBSCRIBER})
         ${CAPNP_LIBRARIES}
     )
 
-    set(EXTRA_COMPILER_FLAGS -Wall -Wextra -Wconversion -Wshadow -Wpedantic -Werror)
-    target_compile_options(${TARGET} PRIVATE ${EXTRA_COMPILER_FLAGS})
+    target_enable_benchmark_warnings(${TARGET})
 endforeach()

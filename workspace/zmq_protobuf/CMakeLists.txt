@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project("zmq_protobuf")
 set(ZMQ_PUBLISHER "${PROJECT_NAME}_publisher")
 set(ZMQ_SUBSCRIBER "${PROJECT_NAME}_subscriber")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/CompilerWarnings.cmake")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,6 +25,7 @@ add_custom_command(
           ${CMAKE_CURRENT_SOURCE_DIR}/proto ${PROTO_FILE}
   DEPENDS ${PROTO_FILE}
   COMMENT "Generating Protobuf C++ sources")
+set_source_files_properties(${PROTO_SRC} PROPERTIES COMPILE_OPTIONS -w)
 
 add_executable(${ZMQ_PUBLISHER})
 target_sources(${ZMQ_PUBLISHER} PRIVATE src/publisher.cc ${PROTO_SRC}
@@ -55,6 +57,5 @@ else()
                                                  ${Protobuf_LIBRARIES})
 endif()
 
-set(EXTRA_COMPILER_FLAGS -Wall -Wextra -Wconversion -Wshadow -Wpedantic -Werror)
-target_compile_options(${ZMQ_PUBLISHER} PRIVATE ${EXTRA_COMPILER_FLAGS})
-target_compile_options(${ZMQ_SUBSCRIBER} PRIVATE ${EXTRA_COMPILER_FLAGS})
+target_enable_benchmark_warnings(${ZMQ_PUBLISHER})
+target_enable_benchmark_warnings(${ZMQ_SUBSCRIBER})

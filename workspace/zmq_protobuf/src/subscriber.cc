@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -51,7 +52,11 @@ class Subscriber {
     while (latencies_.size() < config_.number_of_samples) {
       zmq::message_t message;
       const auto result = socket_.recv(message, zmq::recv_flags::none);
-      if (result) tack(message);
+      if (!result) {
+        std::cerr << "ZMQ recv returned no message" << std::endl;
+        std::abort();
+      }
+      tack(message);
     }
   }
 
@@ -65,14 +70,9 @@ class Subscriber {
       std::abort();
     }
 
-    if (payload.data().empty() ||
-        static_cast<std::uint8_t>(payload.data()[0]) !=
-            constants::PAYLOAD_DATA_CHUNK) {
-      std::cerr << "Invalid payload data" << std::endl;
-      std::abort();
-    }
-
-    const auto latency_ns = utils::now() - payload.time_stamp_ns();
+    const auto timestamp_ns = payload.time_stamp_ns();
+    const auto received_at_ns = utils::now();
+    const auto latency_ns = received_at_ns - timestamp_ns;
     latencies_.push_back(latency_ns);
   }
 

@@ -1,6 +1,8 @@
 #include <chrono>
+#include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <rclcpp/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -28,11 +30,12 @@ class Publisher final : public rclcpp::Node {
 
  private:
   void tick() noexcept {
+    const auto timestamp = now();
     ros2_fast::msg::Payload message;
     message.data.resize(config_.payload_size_bytes,
                         constants::PAYLOAD_DATA_CHUNK);
     message.message_number = message_number_++;
-    message.time_stamp = now();
+    message.time_stamp = timestamp;
 
     publisher_->publish(std::move(message));
   }
