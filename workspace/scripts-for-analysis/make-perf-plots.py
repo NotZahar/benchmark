@@ -7,6 +7,64 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+BAR_GROUP_WIDTH = 1.8
+BAR_GROUP_GAP = 0.55
+BAR_WIDTH_RATIO = 0.92
+MIN_BAR_CHART_WIDTH_IN = 20
+BAR_CHART_HEIGHT_IN = 9
+
+
+def grouped_bar_x(payload_sizes):
+    group_step = BAR_GROUP_WIDTH + BAR_GROUP_GAP
+    return np.arange(len(payload_sizes)) * group_step
+
+
+def max_bars_per_payload(df):
+    return max(
+        df[df["payload_size"] == payload]["middleware"].nunique()
+        for payload in sorted(df["payload_size"].unique())
+    )
+
+
+def bar_chart_width(payload_sizes, max_bars_per_group):
+    group_step = BAR_GROUP_WIDTH + BAR_GROUP_GAP
+    bar_density_width = max_bars_per_group * 0.55
+    payload_width = len(payload_sizes) * group_step * 1.35 + 5
+    return max(MIN_BAR_CHART_WIDTH_IN, payload_width, bar_density_width)
+
+
+def bar_center(group_center, bar_idx, bar_count):
+    bar_slot_width = BAR_GROUP_WIDTH / max(bar_count, 1)
+    group_left = group_center - BAR_GROUP_WIDTH / 2.0
+    return group_left + (bar_idx + 0.5) * bar_slot_width
+
+
+def visible_bar_width(bar_count):
+    bar_slot_width = BAR_GROUP_WIDTH / max(bar_count, 1)
+    return bar_slot_width * BAR_WIDTH_RATIO
+
+
+def key_label(row):
+    return f"{row.get('middleware')} payload={row.get('payload_size')} hz={row.get('hz')}"
+
+
+def require_number(row, column):
+    if column not in row.index or pd.isna(row[column]):
+        raise ValueError(f"Missing perf column '{column}' for {key_label(row)}")
+    return float(row[column])
+
+
+def cpu_percent(row, cpu_column, task_clock_column, time_elapsed_column):
+    if cpu_column in row.index and not pd.isna(row[cpu_column]):
+        return float(row[cpu_column]) * 100.0
+
+    task_clock_ms = require_number(row, task_clock_column)
+    time_elapsed = require_number(row, time_elapsed_column)
+    if time_elapsed <= 0:
+        raise ValueError(f"Invalid {time_elapsed_column}={time_elapsed} for {key_label(row)}")
+
+    return task_clock_ms / (time_elapsed * 1000.0) * 100.0
+
 
 def load_and_merge_data(subscriber_csv, publisher_csv):
     """Load and merge subscriber and publisher data."""
@@ -38,21 +96,20 @@ def load_and_merge_data(subscriber_csv, publisher_csv):
 
         row = {"middleware": mw, "payload_size": payload, "hz": hz}
 
-        if not sub_data.empty:
-            row["subscriber_cpu_utilized"] = sub_data.iloc[0].get(
-                "avg_cpu_utilized", 0
-            ) * 100
-            row["num_subscribers"] = int(sub_data.iloc[0].get("num_subscribers", 0))
-        else:
-            row["subscriber_cpu_utilized"] = 0
-            row["num_subscribers"] = 0
+        if sub_data.empty:
+            raise ValueError(f"Missing subscriber perf data for {key_label(row)}")
+        if pub_data.empty:
+            raise ValueError(f"Missing publisher perf data for {key_label(row)}")
 
-        if not pub_data.empty:
-            row["publisher_cpu_utilized"] = (
-                pub_data.iloc[0].get("cpu_utilized", 0) * 100
-            )
-        else:
-            row["publisher_cpu_utilized"] = 0
+        sub_row = sub_data.iloc[0]
+        pub_row = pub_data.iloc[0]
+        row["subscriber_cpu_utilized"] = cpu_percent(
+            sub_row, "avg_cpu_utilized", "avg_task_clock_ms", "avg_time_elapsed"
+        )
+        row["num_subscribers"] = int(require_number(sub_row, "num_subscribers"))
+        row["publisher_cpu_utilized"] = cpu_percent(
+            pub_row, "cpu_utilized", "task_clock_ms", "time_elapsed"
+        )
 
         row["total_cpu_utilized"] = row["publisher_cpu_utilized"] + (
             row["subscriber_cpu_utilized"] * row["num_subscribers"]
@@ -89,8 +146,13 @@ def create_publisher_cpu_chart(combined_df, output_dir):
         else:
             return f"{p}B"
 
-    plt.figure(figsize=(16, 8))
-    x = np.arange(len(payload_sizes))
+    plt.figure(
+        figsize=(
+            bar_chart_width(payload_sizes, max_bars_per_payload(combined_df)),
+            BAR_CHART_HEIGHT_IN,
+        )
+    )
+    x = grouped_bar_x(payload_sizes)
 
     colors = plt.cm.tab20(np.linspace(0, 1, len(middlewares)))
     color_dict = {mw: colors[i] for i, mw in enumerate(middlewares)}
@@ -99,15 +161,17 @@ def create_publisher_cpu_chart(combined_df, output_dir):
     for payload_idx, payload in enumerate(payload_sizes):
         payload_data = combined_df[combined_df["payload_size"] == payload]
         sorted_data = payload_data.sort_values("publisher_cpu_utilized")
-        bar_width = 0.8 / len(sorted_data)
+        bar_count = len(sorted_data)
+        bar_width = visible_bar_width(bar_count)
 
         for bar_idx, (_, row) in enumerate(sorted_data.iterrows()):
             mw = row["middleware"]
             value = row["publisher_cpu_utilized"]
             color = color_dict[mw]
+            center = bar_center(x[payload_idx], bar_idx, bar_count)
 
             bar = plt.bar(
-                x[payload_idx] + bar_idx * bar_width - 0.4,
+                center,
                 value,
                 bar_width,
                 color=color,
@@ -119,12 +183,13 @@ def create_publisher_cpu_chart(combined_df, output_dir):
             if value > 0:
                 height = bar[0].get_height()
                 plt.text(
-                    bar[0].get_x() + bar_width / 2.0,
+                    center,
                     height,
                     f"{value:.1f}%",
                     ha="center",
                     va="bottom",
-                    fontsize=8,
+                    fontsize=7,
+                    rotation=90,
                 )
 
     plt.xlabel("Payload Size", fontsize=12, fontweight="bold")
@@ -165,8 +230,13 @@ def create_subscriber_cpu_chart(combined_df, output_dir):
         else:
             return f"{p}B"
 
-    plt.figure(figsize=(16, 8))
-    x = np.arange(len(payload_sizes))
+    plt.figure(
+        figsize=(
+            bar_chart_width(payload_sizes, max_bars_per_payload(combined_df)),
+            BAR_CHART_HEIGHT_IN,
+        )
+    )
+    x = grouped_bar_x(payload_sizes)
 
     colors = plt.cm.tab20(np.linspace(0, 1, len(middlewares)))
     color_dict = {mw: colors[i] for i, mw in enumerate(middlewares)}
@@ -175,15 +245,17 @@ def create_subscriber_cpu_chart(combined_df, output_dir):
     for payload_idx, payload in enumerate(payload_sizes):
         payload_data = combined_df[combined_df["payload_size"] == payload]
         sorted_data = payload_data.sort_values("subscriber_cpu_utilized")
-        bar_width = 0.8 / len(sorted_data)
+        bar_count = len(sorted_data)
+        bar_width = visible_bar_width(bar_count)
 
         for bar_idx, (_, row) in enumerate(sorted_data.iterrows()):
             mw = row["middleware"]
             value = row["subscriber_cpu_utilized"]
             color = color_dict[mw]
+            center = bar_center(x[payload_idx], bar_idx, bar_count)
 
             bar = plt.bar(
-                x[payload_idx] + bar_idx * bar_width - 0.4,
+                center,
                 value,
                 bar_width,
                 color=color,
@@ -201,15 +273,16 @@ def create_subscriber_cpu_chart(combined_df, output_dir):
                 else:
                     fmt = f"{value:.1f}%"
                     offset = 0
-                    fontsize = 8
+                    fontsize = 7
 
                 plt.text(
-                    bar[0].get_x() + bar_width / 2.0,
+                    center,
                     height + offset,
                     fmt,
                     ha="center",
                     va="bottom",
                     fontsize=fontsize,
+                    rotation=90,
                 )
 
     plt.xlabel("Payload Size", fontsize=12, fontweight="bold")
@@ -252,8 +325,13 @@ def create_total_cpu_chart(combined_df, output_dir):
         else:
             return f"{p}B"
 
-    plt.figure(figsize=(16, 8))
-    x = np.arange(len(payload_sizes))
+    plt.figure(
+        figsize=(
+            bar_chart_width(payload_sizes, max_bars_per_payload(combined_df)),
+            BAR_CHART_HEIGHT_IN,
+        )
+    )
+    x = grouped_bar_x(payload_sizes)
 
     colors = plt.cm.tab20(np.linspace(0, 1, len(middlewares)))
     color_dict = {mw: colors[i] for i, mw in enumerate(middlewares)}
@@ -262,15 +340,17 @@ def create_total_cpu_chart(combined_df, output_dir):
     for payload_idx, payload in enumerate(payload_sizes):
         payload_data = combined_df[combined_df["payload_size"] == payload]
         sorted_data = payload_data.sort_values("total_cpu_utilized")
-        bar_width = 0.8 / len(sorted_data)
+        bar_count = len(sorted_data)
+        bar_width = visible_bar_width(bar_count)
 
         for bar_idx, (_, row) in enumerate(sorted_data.iterrows()):
             mw = row["middleware"]
             value = row["total_cpu_utilized"]
             color = color_dict[mw]
+            center = bar_center(x[payload_idx], bar_idx, bar_count)
 
             bar = plt.bar(
-                x[payload_idx] + bar_idx * bar_width - 0.4,
+                center,
                 value,
                 bar_width,
                 color=color,
@@ -282,12 +362,13 @@ def create_total_cpu_chart(combined_df, output_dir):
             if value > 1:
                 height = bar[0].get_height()
                 plt.text(
-                    bar[0].get_x() + bar_width / 2.0,
+                    center,
                     height,
                     f"{value:.1f}%",
                     ha="center",
                     va="bottom",
-                    fontsize=8,
+                    fontsize=7,
+                    rotation=90,
                 )
 
     subscriber_counts = sorted(

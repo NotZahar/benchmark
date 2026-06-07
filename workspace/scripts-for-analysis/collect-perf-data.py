@@ -40,6 +40,16 @@ def parse_perf_file(file_path):
                     except ValueError:
                         metrics[key] = 0
 
+            if (
+                "cpu_utilized" not in metrics
+                and "task_clock_ms" in metrics
+                and "time_elapsed" in metrics
+                and metrics["time_elapsed"] > 0
+            ):
+                metrics["cpu_utilized"] = metrics["task_clock_ms"] / (
+                    metrics["time_elapsed"] * 1000.0
+                )
+
     except Exception as e:
         print(f"Error parsing {file_path}: {e}")
 

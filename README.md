@@ -105,3 +105,6 @@ cd /root/workspace
 ```zsh
 ./workspace/scripts-for-analysis/fix-host-ownership.sh
 ```
+
+`run-analysis.py`, запущенный через `env_run.sh`, сам возвращает владельца
+своего output-каталога host-пользователю.

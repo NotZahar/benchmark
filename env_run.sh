@@ -6,6 +6,8 @@ IMAGE_NAME="${IMAGE_NAME:-transport-benchmark-image:latest}"
 CONTAINER_NAME="${CONTAINER_NAME:-transport-benchmark-container}"
 CONTAINERFILE="${CONTAINERFILE:-Containerfile}"
 WORKSPACE_DIR="${0:A:h}"
+HOST_UID="${TRANSPORT_BENCHMARK_CHOWN_UID:-$(id -u)}"
+HOST_GID="${TRANSPORT_BENCHMARK_CHOWN_GID:-$(id -g)}"
 IMAGE_FINGERPRINT=""
 
 already_in_container() {
@@ -68,6 +70,8 @@ run_container() {
 		--cap-add SYS_PTRACE \
 		--ulimit memlock=-1:-1 \
 		-e TRANSPORT_BENCHMARK_CONTAINER=1 \
+		-e TRANSPORT_BENCHMARK_CHOWN_UID="$HOST_UID" \
+		-e TRANSPORT_BENCHMARK_CHOWN_GID="$HOST_GID" \
 		-v "$WORKSPACE_DIR/workspace:/root/workspace" \
 		"${perf_mount[@]}" \
 		-it "$IMAGE_NAME"
@@ -80,9 +84,17 @@ docker_exec() {
 	fi
 
 	if (( $# > 0 )); then
-		docker exec "${tty_args[@]}" -w /root/workspace "$CONTAINER_NAME" "$@"
+		docker exec "${tty_args[@]}" \
+			-e TRANSPORT_BENCHMARK_CHOWN_UID="$HOST_UID" \
+			-e TRANSPORT_BENCHMARK_CHOWN_GID="$HOST_GID" \
+			-w /root/workspace \
+			"$CONTAINER_NAME" "$@"
 	else
-		docker exec "${tty_args[@]}" -w /root/workspace "$CONTAINER_NAME" /bin/zsh
+		docker exec "${tty_args[@]}" \
+			-e TRANSPORT_BENCHMARK_CHOWN_UID="$HOST_UID" \
+			-e TRANSPORT_BENCHMARK_CHOWN_GID="$HOST_GID" \
+			-w /root/workspace \
+			"$CONTAINER_NAME" /bin/zsh
 	fi
 }
 

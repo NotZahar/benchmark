@@ -8,6 +8,35 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+BAR_GROUP_WIDTH = 1.8
+BAR_GROUP_GAP = 0.55
+BAR_WIDTH_RATIO = 0.92
+MIN_BAR_CHART_WIDTH_IN = 20
+BAR_CHART_HEIGHT_IN = 9
+
+
+def grouped_bar_x(payload_sizes):
+    group_step = BAR_GROUP_WIDTH + BAR_GROUP_GAP
+    return np.arange(len(payload_sizes)) * group_step
+
+
+def bar_chart_width(payload_sizes, max_bars_per_group):
+    group_step = BAR_GROUP_WIDTH + BAR_GROUP_GAP
+    bar_density_width = max_bars_per_group * 0.55
+    payload_width = len(payload_sizes) * group_step * 1.35 + 5
+    return max(MIN_BAR_CHART_WIDTH_IN, payload_width, bar_density_width)
+
+
+def bar_center(group_center, bar_idx, bar_count):
+    bar_slot_width = BAR_GROUP_WIDTH / max(bar_count, 1)
+    group_left = group_center - BAR_GROUP_WIDTH / 2.0
+    return group_left + (bar_idx + 0.5) * bar_slot_width
+
+
+def visible_bar_width(bar_count):
+    bar_slot_width = BAR_GROUP_WIDTH / max(bar_count, 1)
+    return bar_slot_width * BAR_WIDTH_RATIO
+
 
 def create_sorted_bar_chart(
     df,
@@ -29,18 +58,25 @@ def create_sorted_bar_chart(
     # Get unique payload sizes and middlewares
     payload_sizes = sorted(df["payload_size"].unique())
     middlewares = df["middleware"].unique()
+    max_bars_per_group = max(
+        df[df["payload_size"] == payload]["middleware"].nunique()
+        for payload in payload_sizes
+    )
 
     # Create figure
-    plt.figure(figsize=(14, 8))
+    plt.figure(
+        figsize=(
+            bar_chart_width(payload_sizes, max_bars_per_group),
+            BAR_CHART_HEIGHT_IN,
+        )
+    )
 
     # Colors for each middleware (consistent across all plots)
     colors = plt.cm.tab20(np.linspace(0, 1, len(middlewares)))
     mw_to_color = {mw: colors[i] for i, mw in enumerate(middlewares)}
 
     # Set width and positions
-    num_middlewares = len(middlewares)
-    bar_width = 0.8 / num_middlewares
-    x = np.arange(len(payload_sizes))
+    x = grouped_bar_x(payload_sizes)
 
     # Track which middlewares have been added to legend
     legend_added = set()
@@ -54,13 +90,16 @@ def create_sorted_bar_chart(
         sorted_mws = payload_df.sort_values(metric)["middleware"].tolist()
 
         # Plot bars in sorted order
+        bar_count = len(sorted_mws)
+        bar_width = visible_bar_width(bar_count)
         for bar_idx, mw in enumerate(sorted_mws):
             value = payload_df[payload_df["middleware"] == mw][metric].values[0]
             color = mw_to_color[mw]
+            center = bar_center(x[payload_idx], bar_idx, bar_count)
 
             # Plot bar
             bar = plt.bar(
-                x[payload_idx] + bar_idx * bar_width - 0.4,
+                center,
                 value,
                 bar_width,
                 color=color,
@@ -74,13 +113,13 @@ def create_sorted_bar_chart(
             # Add value label
             height = bar[0].get_height()
             plt.text(
-                x[payload_idx] + bar_idx * bar_width - 0.4 + bar_width / 2,
+                center,
                 height + 0.01,
                 f"{value:.2f}",
                 ha="center",
                 va="bottom",
-                fontsize=8,
-                rotation=45,
+                fontsize=7,
+                rotation=90,
             )
 
     # Configure plot
